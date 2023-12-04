@@ -8,12 +8,8 @@ type Response struct {
 	ChatID int64
 }
 
-type State struct {
-	OwnerChatID int64
-}
-
-func (s State) handle(msg *tgbotapi.Message) Response {
-	if msg.Chat.ID == s.OwnerChatID {
+func (a App) handle(msg *tgbotapi.Message) Response {
+	if int(msg.Chat.ID) == a.Owner.ChatID {
 		return Response{
 			Text:   "Привет!",
 			Keys:   nil,

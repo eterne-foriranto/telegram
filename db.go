@@ -5,9 +5,14 @@ import (
 )
 
 type User struct {
-	ID            string `reindex:"id,,pk"`
-	ChatID        int    `reindex:"chat_id"`
-	IsActive      bool   `reindex:"is_active"`
-	IsDeleted     bool   `reindex:"is_deleted"`
-	InvitationKey string `reindex:"invitation_key"`
+	ID               string `reindex:"id,,pk"`
+	ChatID           int    `reindex:"chat_id"`
+	IsActive         bool   `reindex:"is_active"`
+	IsDeleted        bool   `reindex:"is_deleted"`
+	InvitationKey    string `reindex:"invitation_key"`
+	CurrentServiceID string `reindex:"current_service_id"`
+}
+
+type Service struct {
+	ID string `reindex:"id,,pk"`
 }
