@@ -12,6 +12,7 @@ const Length = 2
 
 type App struct {
 	Owner User
+	DB    *reindexer.Reindexer
 }
 
 func getApp() App {
@@ -31,8 +32,9 @@ func getApp() App {
 	handleError(err)
 	err = db.Upsert("user", owner)
 	handleError(err)
-	return App{owner}
+	return App{owner, db}
 }
+
 func char(rune byte) string {
 	if rune == 0 {
 		return string(45)
@@ -66,7 +68,6 @@ func randomDigits(b []byte) string {
 	chars[2] = char(left2 | right2)
 	chars3 := b[2] << 2
 	chars[3] = char(chars3 >> 2)
-	//fmt.Println(chars)
 	return strings.Join(chars, "")
 }
 
@@ -79,6 +80,4 @@ func invite(ID string) {
 		key += randomDigits(b)
 	}
 	fmt.Println(key)
-	//fmt.Println(b)
-	//randomDigits(b)
 }
