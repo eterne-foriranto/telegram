@@ -29,7 +29,6 @@ func getBot() *tgbotapi.BotAPI {
 }
 
 func main() {
-	//invite("foo")
 	bot := getBot()
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
