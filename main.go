@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/astaxie/beego/config"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"strconv"
 )
 
 func handleError(err error) {
@@ -33,13 +32,10 @@ func main() {
 	bot := getBot()
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
-	ownerChatID, err := strconv.Atoi(getConfigValue("telegram", "owner_chat_id"))
-	handleError(err)
-	state := State{int64(ownerChatID)}
-
+	app := getApp()
 	updates := bot.GetUpdatesChan(u)
 	for update := range updates {
-		msg := makeMessage(state.handle(update.Message))
+		msg := makeMessage(app.handle(update.Message))
 		_, err := bot.Send(msg)
 		handleError(err)
 	}
