@@ -6,8 +6,9 @@ import (
 )
 
 type App struct {
-	Owner User
-	DB    *reindexer.Reindexer
+	Owner      User
+	DB         *reindexer.Reindexer
+	ServiceMap map[string]ServiceIface
 }
 
 func getApp() App {
@@ -22,12 +23,25 @@ func getApp() App {
 		CurrentServiceID: "",
 	}
 
-	db := reindexer.NewReindex("cproto://172.19.0.6:6534/fk", reindexer.WithCreateDBIfMissing())
+	db := reindexer.NewReindex("cproto://172.20.0.2:6534/fk",
+		reindexer.WithCreateDBIfMissing())
 	err = db.OpenNamespace("user", reindexer.DefaultNamespaceOptions(), User{})
 	handleError(err)
 	err = db.Upsert("user", owner)
 	handleError(err)
 	err = db.OpenNamespace("service_instance", reindexer.DefaultNamespaceOptions(), ServiceInstance{})
 	handleError(err)
-	return App{owner, db}
+
+	serviceMap := map[string]ServiceIface{
+		"invite": Invite{},
+	}
+	return App{owner, db, serviceMap}
+}
+
+func ownerServices(app *App) []string {
+	services := make([]string, 0)
+	for k := range app.ServiceMap {
+		services = append(services, k)
+	}
+	return services
 }

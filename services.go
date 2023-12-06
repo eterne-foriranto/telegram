@@ -11,6 +11,11 @@ type ServiceInstance struct {
 	State     string `reindex:"state"`
 }
 
+type ServiceIface interface {
+	start(string, *reindexer.Reindexer) Response
+	next(string, *App) Response
+}
+
 type Invite struct {
 	ServiceInstance
 }

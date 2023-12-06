@@ -1,8 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"github.com/restream/reindexer/v3"
 	_ "github.com/restream/reindexer/v3/bindings/cproto"
 )
+
+type DB *reindexer.Reindexer
 
 type User struct {
 	ID               string `reindex:"id,,pk"`
@@ -15,4 +19,17 @@ type User struct {
 
 type Service struct {
 	ID string `reindex:"id,,pk"`
+}
+
+func currentService(chatID int, db *reindexer.Reindexer) string {
+	query := db.Query("user").
+		WhereInt("chat_id", reindexer.EQ, chatID)
+	iterator := query.Exec()
+	defer iterator.Close()
+	for iterator.Next() {
+		elem := iterator.Object().(*User)
+		fmt.Println(elem)
+		return elem.CurrentServiceID
+	}
+	return ""
 }
