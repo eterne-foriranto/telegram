@@ -11,29 +11,33 @@ type Response struct {
 	ChatID  int64
 }
 
-func (a App) handle(msg *tgbotapi.Message) Response {
-	if int(msg.Chat.ID) == a.Owner.ChatID {
-		currentService := currentService(int(msg.Chat.ID), a.DB)
-		if currentService == "" {
-			services := ownerServices(&a)
-			if slices.Contains(services, msg.Text) {
-				service, ok := a.ServiceMap[msg.Text]
-				if ok {
-					resp := service.start(a.Owner.ID, a.DB)
-				}
-			} else {
-				return Response{
-					Text:    "Привет!",
-					Buttons: services,
-					ChatID:  msg.Chat.ID,
-				}
+func responseToOwner(msg *tgbotapi.Message, app *App) Response {
+	currentService := currentService(int(msg.Chat.ID), app.DB)
+	if currentService == "" {
+		services := ownerServices(app)
+		if slices.Contains(services, msg.Text) {
+			service, ok := app.ServiceMap[msg.Text]
+			if ok {
+				return service.start(app.Owner.ID, app.DB)
 			}
 		} else {
-			service, ok := a.ServiceMap[currentService]
-			if ok {
-				resp := service.next(a.Owner.ID, &a)
+			return Response{
+				Text:    "Привет!",
+				Buttons: services,
 			}
 		}
+	} else {
+		service, ok := app.ServiceMap[currentService]
+		if ok {
+			return service.next(app.Owner.ID, app)
+		}
+	}
+	return Response{}
+}
+
+func (a App) handle(msg *tgbotapi.Message) Response {
+	if int(msg.Chat.ID) == a.Owner.ChatID {
+		resp := responseToOwner(msg, &a)
 		resp.ChatID = msg.Chat.ID
 		return resp
 	}
