@@ -6,9 +6,10 @@ import (
 )
 
 type ServiceInstance struct {
-	ServiceID string `reindex:"service_id"`
-	UserID    string `reindex:"user_id"`
-	State     string `reindex:"state"`
+	ServiceID string   `reindex:"service_id"`
+	UserID    string   `reindex:"user_id"`
+	State     string   `reindex:"state"`
+	_         struct{} `reindex:"service_id+user_id,,composite,pk"`
 }
 
 type ServiceIface interface {
@@ -20,12 +21,15 @@ type Invite struct {
 	ServiceInstance
 }
 
-func (i Invite) start(userId string, db *reindexer.Reindexer) Response {
+func (i *Invite) start(userId string, db *reindexer.Reindexer) Response {
 	i.ServiceID = "invite"
 	i.State = "input user_id"
 	i.UserID = userId
 
-	err := db.Upsert("service_instance", i)
+	err := db.OpenNamespace("service_instance",
+		reindexer.DefaultNamespaceOptions(), i)
+	handleError(err)
+	err = db.Upsert("service_instance", i)
 	handleError(err)
 
 	_, err = db.Update("user", &User{
@@ -36,7 +40,7 @@ func (i Invite) start(userId string, db *reindexer.Reindexer) Response {
 	return Response{"Enter ID of the user to be invited", nil, 0}
 }
 
-func (i Invite) next(inp string, app *App) Response {
+func (i *Invite) next(inp string, app *App) Response {
 	key := inviteKey()
 	newUserID := inp
 

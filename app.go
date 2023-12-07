@@ -29,11 +29,12 @@ func getApp() App {
 	handleError(err)
 	err = db.Upsert("user", owner)
 	handleError(err)
-	err = db.OpenNamespace("service_instance", reindexer.DefaultNamespaceOptions(), ServiceInstance{})
-	handleError(err)
+	//err = db.OpenNamespace("service_instance",
+	//	reindexer.DefaultNamespaceOptions(), &ServiceInstance{})
+	//handleError(err)
 
 	serviceMap := map[string]ServiceIface{
-		"invite": Invite{},
+		"invite": &Invite{},
 	}
 	return App{owner, db, serviceMap}
 }

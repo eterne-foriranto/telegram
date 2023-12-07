@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/restream/reindexer/v3"
 	_ "github.com/restream/reindexer/v3/bindings/cproto"
 )
@@ -28,7 +27,6 @@ func currentService(chatID int, db *reindexer.Reindexer) string {
 	defer iterator.Close()
 	for iterator.Next() {
 		elem := iterator.Object().(*User)
-		fmt.Println(elem)
 		return elem.CurrentServiceID
 	}
 	return ""
