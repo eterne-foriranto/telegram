@@ -32,11 +32,11 @@ func (i *Invite) start(userId string, db *reindexer.Reindexer) Response {
 	err = db.Upsert("service_instance", i)
 	handleError(err)
 
-	_, err = db.Update("user", &User{
-		ID:               userId,
-		CurrentServiceID: "invite",
-	})
-	handleError(err)
+	db.Query("user").
+		Where("id", reindexer.EQ, userId).
+		Set("current_service_id", "invite").
+		Update()
+
 	return Response{"Enter ID of the user to be invited", nil, 0}
 }
 
@@ -55,13 +55,15 @@ func (i *Invite) next(inp string, app *App) Response {
 	err := db.Upsert("user", newUser)
 	handleError(err)
 
-	_, err = db.Update("user", &User{
-		ID:               i.UserID,
-		CurrentServiceID: "",
-	})
-	handleError(err)
+	db.Query("user").
+		Where("id", reindexer.EQ, i.UserID).
+		Set("current_service_id", "").
+		Update()
 
-	err = db.Delete("service_instance", &ServiceInstance{ServiceID: i.ServiceID, UserID: i.UserID})
+	_, err = db.Query("service_instance").
+		Where("service_id", reindexer.EQ, i.ServiceID).
+		Where("user_id", reindexer.EQ, i.UserID).
+		Delete()
 	handleError(err)
 	return Response{fmt.Sprintf("Invite key for user %s is `%s`", newUserID, key), nil, 0}
 }
