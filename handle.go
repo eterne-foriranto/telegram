@@ -29,7 +29,7 @@ func responseToOwner(msg *tgbotapi.Message, app *App) Response {
 	} else {
 		service, ok := app.ServiceMap[currentService]
 		if ok {
-			return service.next(app.Owner.ID, app)
+			return service.next(msg.Text, app)
 		}
 	}
 	return Response{}
