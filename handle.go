@@ -1,6 +1,9 @@
 package main
 
-import tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+import (
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"slices"
+)
 
 type Response struct {
 	Text    string
@@ -8,13 +11,35 @@ type Response struct {
 	ChatID  int64
 }
 
+func responseToOwner(msg *tgbotapi.Message, app *App) Response {
+	currentService := currentService(int(msg.Chat.ID), app.DB)
+	if currentService == "" {
+		services := ownerServices(app)
+		if slices.Contains(services, msg.Text) {
+			service, ok := app.ServiceMap[msg.Text]
+			if ok {
+				return service.start(app.Owner.ID, app.DB)
+			}
+		} else {
+			return Response{
+				Text:    "Привет!",
+				Buttons: services,
+			}
+		}
+	} else {
+		service, ok := app.ServiceMap[currentService]
+		if ok {
+			return service.next(msg.Text, app)
+		}
+	}
+	return Response{}
+}
+
 func (a App) handle(msg *tgbotapi.Message) Response {
 	if int(msg.Chat.ID) == a.Owner.ChatID {
-		return Response{
-			Text:    "Привет!",
-			Buttons: []string{"invite"},
-			ChatID:  msg.Chat.ID,
-		}
+		resp := responseToOwner(msg, &a)
+		resp.ChatID = msg.Chat.ID
+		return resp
 	}
 	return Response{
 		Text:    "",
