@@ -21,10 +21,10 @@ type Invite struct {
 	ServiceInstance
 }
 
-func (i *Invite) start(userId string, db *reindexer.Reindexer) Response {
+func (i *Invite) start(userID string, db *reindexer.Reindexer) Response {
 	i.ServiceID = "invite"
 	i.State = "input user_id"
-	i.UserID = userId
+	i.UserID = userID
 
 	err := db.OpenNamespace("service_instance",
 		reindexer.DefaultNamespaceOptions(), i)
@@ -33,7 +33,7 @@ func (i *Invite) start(userId string, db *reindexer.Reindexer) Response {
 	handleError(err)
 
 	db.Query("user").
-		Where("id", reindexer.EQ, userId).
+		Where("id", reindexer.EQ, userID).
 		Set("current_service_id", "invite").
 		Update()
 
