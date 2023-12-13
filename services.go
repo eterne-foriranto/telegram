@@ -12,6 +12,19 @@ type ServiceInstance struct {
 	_         struct{} `reindex:"service_id+user_id,,composite,pk"`
 }
 
+func (si ServiceInstance) assignUser(db *reindexer.Reindexer) {
+	err := db.OpenNamespace("service_instance",
+		reindexer.DefaultNamespaceOptions(), si)
+	handleError(err)
+	err = db.Upsert("service_instance", si)
+	handleError(err)
+
+	db.Query("user").
+		Where("id", reindexer.EQ, si.UserID).
+		Set("current_service_id", si.ServiceID).
+		Update()
+}
+
 type ServiceIface interface {
 	start(string, *reindexer.Reindexer) Response
 	next(string, *App) Response
@@ -25,18 +38,7 @@ func (i *Invite) start(userID string, db *reindexer.Reindexer) Response {
 	i.ServiceID = "invite"
 	i.State = "input user_id"
 	i.UserID = userID
-
-	err := db.OpenNamespace("service_instance",
-		reindexer.DefaultNamespaceOptions(), i)
-	handleError(err)
-	err = db.Upsert("service_instance", i)
-	handleError(err)
-
-	db.Query("user").
-		Where("id", reindexer.EQ, userID).
-		Set("current_service_id", "invite").
-		Update()
-
+	i.assignUser(db)
 	return Response{"Enter ID of the user to be invited", nil, 0}
 }
 
