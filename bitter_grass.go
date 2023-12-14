@@ -36,20 +36,25 @@ func (bg BitterGrass) start(userID string, db *reindexer.Reindexer) Response {
 }
 
 func (bg BitterGrass) next(inp string, app *App) Response {
+	buttons := []string{reacts["done"]}
+	if inp == reacts["done"] {
+		bg.unlink(app.DB)
+		return Response{"Хорошо", nil, 0}
+	}
+
 	switch bg.State {
 	case "awaiting for react":
 		switch inp {
-		case reacts["done"]:
-			bg.unlink(app.DB)
-			return Response{"Хорошо", nil, 0}
 		case reacts["delay"]:
 			bg.State = "input minutes to delay"
-			return Response{"Через сколько минут?", nil, 0}
+			return Response{"Через сколько минут?", buttons, 0}
 		}
 	case "input minutes to delay":
 		str := strings.ReplaceAll(inp, ",", ".")
 		minutes, err := strconv.ParseFloat(str, 32)
-
+		if err != nil {
+			return Response{"Требуется ввести число"}
+		}
 	}
 	return Response{}
 }
