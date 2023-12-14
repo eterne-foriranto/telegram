@@ -25,6 +25,19 @@ func (si ServiceInstance) assignUser(db *reindexer.Reindexer) {
 		Update()
 }
 
+func (si ServiceInstance) unlink(db *reindexer.Reindexer) {
+	db.Query("user").
+		Where("id", reindexer.EQ, si.UserID).
+		Set("current_service_id", "").
+		Update()
+
+	_, err := db.Query("service_instance").
+		Where("service_id", reindexer.EQ, si.ServiceID).
+		Where("user_id", reindexer.EQ, si.UserID).
+		Delete()
+	handleError(err)
+}
+
 type ServiceIface interface {
 	start(string, *reindexer.Reindexer) Response
 	next(string, *App) Response
@@ -54,18 +67,8 @@ func (i *Invite) next(inp string, app *App) Response {
 	}
 
 	db := app.DB
+	i.unlink(db)
 	err := db.Upsert("user", newUser)
-	handleError(err)
-
-	db.Query("user").
-		Where("id", reindexer.EQ, i.UserID).
-		Set("current_service_id", "").
-		Update()
-
-	_, err = db.Query("service_instance").
-		Where("service_id", reindexer.EQ, i.ServiceID).
-		Where("user_id", reindexer.EQ, i.UserID).
-		Delete()
 	handleError(err)
 	return Response{fmt.Sprintf("Invite key for user %s is `%s`", newUserID, key), nil, 0}
 }
