@@ -27,12 +27,17 @@ func (bg *BitterGrass) start(userID string, app *App) Response {
 	bg.ServiceID = "bitter_grass"
 	bg.UserID = userID
 	bg.State = "awaiting for react"
-	bg.assignUser(app.DB)
-	return Response{
+
+	db := app.DB
+	bg.assignUser(db)
+	chatID, err := chatIDByUserID(userID, db)
+	handleError(err)
+	app.send(Response{
 		Text:    "Пора принять таблетки",
 		Buttons: reactsFront(),
-		ChatID:  0,
-	}
+		ChatID:  chatID,
+	})
+	return Response{}
 }
 
 func (bg *BitterGrass) next(inp string, app *App) Response {

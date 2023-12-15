@@ -31,3 +31,21 @@ func currentService(chatID int, db *reindexer.Reindexer) string {
 	}
 	return ""
 }
+
+type userNotFound struct{}
+
+func (unf userNotFound) Error() string {
+	return "User not found"
+}
+
+func chatIDByUserID(userID string, db *reindexer.Reindexer) (int64, error) {
+	query := db.Query("user").
+		WhereString("id", reindexer.EQ, userID)
+	iterator := query.Exec()
+	defer iterator.Close()
+	for iterator.Next() {
+		elem := iterator.Object().(*User)
+		return int64(elem.ChatID), nil
+	}
+	return 0, userNotFound{}
+}

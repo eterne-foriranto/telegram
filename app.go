@@ -42,19 +42,20 @@ func getApp() App {
 	sch, err := gocron.NewScheduler()
 	handleError(err)
 	bg := BitterGrass{}
+	bot := getBot()
+	app := App{owner, db, serviceMap, sch, bot}
 	_, err = sch.NewJob(
 		gocron.DailyJob(
 			1,
 			gocron.NewAtTimes(
-				gocron.NewAtTime(16, 7, 0),
+				gocron.NewAtTime(17, 59, 00),
 			),
 		),
-		gocron.NewTask(bg.start, "me", db),
+		gocron.NewTask(bg.start, "me", &app),
 	)
 	handleError(err)
 	sch.Start()
-	bot := getBot()
-	return App{owner, db, serviceMap, sch, bot}
+	return app
 }
 
 func ownerServices(app *App) []string {
