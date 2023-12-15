@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/restream/reindexer/v3"
 	"strconv"
 	"strings"
 )
@@ -24,11 +23,11 @@ type BitterGrass struct {
 	ServiceInstance
 }
 
-func (bg *BitterGrass) start(userID string, db *reindexer.Reindexer) Response {
+func (bg *BitterGrass) start(userID string, app *App) Response {
 	bg.ServiceID = "bitter_grass"
 	bg.UserID = userID
 	bg.State = "awaiting for react"
-	bg.assignUser(db)
+	bg.assignUser(app.DB)
 	return Response{
 		Text:    "Пора принять таблетки",
 		Buttons: reactsFront(),

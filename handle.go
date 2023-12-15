@@ -18,7 +18,7 @@ func responseToOwner(msg *tgbotapi.Message, app *App) Response {
 		if slices.Contains(services, msg.Text) {
 			service, ok := app.ServiceMap[msg.Text]
 			if ok {
-				return service.start(app.Owner.ID, app.DB)
+				return service.start(app.Owner.ID, app)
 			}
 		} else {
 			return Response{
