@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/restream/reindexer/v3"
 	"strconv"
 	"strings"
@@ -23,7 +24,7 @@ type BitterGrass struct {
 	ServiceInstance
 }
 
-func (bg BitterGrass) start(userID string, db *reindexer.Reindexer) Response {
+func (bg *BitterGrass) start(userID string, db *reindexer.Reindexer) Response {
 	bg.ServiceID = "bitter_grass"
 	bg.UserID = userID
 	bg.State = "awaiting for react"
@@ -35,7 +36,7 @@ func (bg BitterGrass) start(userID string, db *reindexer.Reindexer) Response {
 	}
 }
 
-func (bg BitterGrass) next(inp string, app *App) Response {
+func (bg *BitterGrass) next(inp string, app *App) Response {
 	buttons := []string{reacts["done"]}
 	if inp == reacts["done"] {
 		bg.unlink(app.DB)
@@ -53,8 +54,10 @@ func (bg BitterGrass) next(inp string, app *App) Response {
 		str := strings.ReplaceAll(inp, ",", ".")
 		minutes, err := strconv.ParseFloat(str, 32)
 		if err != nil {
-			return Response{"Требуется ввести число"}
+			return Response{"Требуется ввести число", buttons, 0}
 		}
+		bg.unlink(app.DB)
+		return Response{fmt.Sprintf("Отложено на %v минуты", minutes), nil, 0}
 	}
 	return Response{}
 }
