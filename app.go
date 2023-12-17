@@ -23,7 +23,7 @@ func getApp() App {
 		CurrentServiceID: "",
 	}
 
-	db := reindexer.NewReindex("cproto://172.20.0.2:6534/fk",
+	db := reindexer.NewReindex("cproto://172.19.0.7:6534/fk",
 		reindexer.WithCreateDBIfMissing())
 	err = db.OpenNamespace("user", reindexer.DefaultNamespaceOptions(), User{})
 	handleError(err)
@@ -31,7 +31,8 @@ func getApp() App {
 	handleError(err)
 
 	serviceMap := map[string]ServiceIface{
-		"invite": &Invite{},
+		"invite":       &Invite{},
+		"bitter_grass": &BitterGrass{},
 	}
 	return App{owner, db, serviceMap}
 }

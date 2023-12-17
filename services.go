@@ -12,6 +12,32 @@ type ServiceInstance struct {
 	_         struct{} `reindex:"service_id+user_id,,composite,pk"`
 }
 
+func (si ServiceInstance) assignUser(db *reindexer.Reindexer) {
+	err := db.OpenNamespace("service_instance",
+		reindexer.DefaultNamespaceOptions(), si)
+	handleError(err)
+	err = db.Upsert("service_instance", si)
+	handleError(err)
+
+	db.Query("user").
+		Where("id", reindexer.EQ, si.UserID).
+		Set("current_service_id", si.ServiceID).
+		Update()
+}
+
+func (si ServiceInstance) unlink(db *reindexer.Reindexer) {
+	db.Query("user").
+		Where("id", reindexer.EQ, si.UserID).
+		Set("current_service_id", "").
+		Update()
+
+	_, err := db.Query("service_instance").
+		Where("service_id", reindexer.EQ, si.ServiceID).
+		Where("user_id", reindexer.EQ, si.UserID).
+		Delete()
+	handleError(err)
+}
+
 type ServiceIface interface {
 	start(string, *reindexer.Reindexer) Response
 	next(string, *App) Response
@@ -21,22 +47,11 @@ type Invite struct {
 	ServiceInstance
 }
 
-func (i *Invite) start(userId string, db *reindexer.Reindexer) Response {
+func (i *Invite) start(userID string, db *reindexer.Reindexer) Response {
 	i.ServiceID = "invite"
 	i.State = "input user_id"
-	i.UserID = userId
-
-	err := db.OpenNamespace("service_instance",
-		reindexer.DefaultNamespaceOptions(), i)
-	handleError(err)
-	err = db.Upsert("service_instance", i)
-	handleError(err)
-
-	db.Query("user").
-		Where("id", reindexer.EQ, userId).
-		Set("current_service_id", "invite").
-		Update()
-
+	i.UserID = userID
+	i.assignUser(db)
 	return Response{"Enter ID of the user to be invited", nil, 0}
 }
 
@@ -52,18 +67,8 @@ func (i *Invite) next(inp string, app *App) Response {
 	}
 
 	db := app.DB
+	i.unlink(db)
 	err := db.Upsert("user", newUser)
-	handleError(err)
-
-	db.Query("user").
-		Where("id", reindexer.EQ, i.UserID).
-		Set("current_service_id", "").
-		Update()
-
-	_, err = db.Query("service_instance").
-		Where("service_id", reindexer.EQ, i.ServiceID).
-		Where("user_id", reindexer.EQ, i.UserID).
-		Delete()
 	handleError(err)
 	return Response{fmt.Sprintf("Invite key for user %s is `%s`", newUserID, key), nil, 0}
 }
