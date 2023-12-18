@@ -20,16 +20,23 @@ type Service struct {
 	ID string `reindex:"id,,pk"`
 }
 
-func currentService(chatID int, db *reindexer.Reindexer) string {
-	query := db.Query("user").
+func currentService(chatID int, app *App) (*ServiceIface, bool) {
+	db := app.DB
+	query := db.Query("service_instance").
+		Join(db.Query("user"), "user").On("service_id", reindexer.EQ, "current_service_id").
 		WhereInt("chat_id", reindexer.EQ, chatID)
+	//query := db.Query("user").
+	//	WhereInt("chat_id", reindexer.EQ, chatID)
 	iterator := query.Exec()
 	defer iterator.Close()
 	for iterator.Next() {
-		elem := iterator.Object().(*User)
-		return elem.CurrentServiceID
+		raw := iterator.Object()
+		foo := raw.(*ServiceInstance).ServiceID
+		res := raw.(*app.ServiceMap[foo])
+		//res := app.ServiceMap[elem.ServiceID](elem)
+		return elem, true
 	}
-	return ""
+	return nil, false
 }
 
 type userNotFound struct{}

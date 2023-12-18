@@ -10,6 +10,7 @@ type ServiceInstance struct {
 	UserID    string   `reindex:"user_id"`
 	State     string   `reindex:"state"`
 	_         struct{} `reindex:"service_id+user_id,,composite,pk"`
+	User      []*User  `reindex:"user,,joined"`
 }
 
 func (si ServiceInstance) assignUser(db *reindexer.Reindexer) {

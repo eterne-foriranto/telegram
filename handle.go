@@ -12,27 +12,26 @@ type Response struct {
 }
 
 func responseToOwner(msg *tgbotapi.Message, app *App) Response {
-	currentService := currentService(int(msg.Chat.ID), app.DB)
-	if currentService == "" {
-		services := ownerServices(app)
-		if slices.Contains(services, msg.Text) {
-			service, ok := app.ServiceMap[msg.Text]
-			if ok {
-				return service.start(app.Owner.ID, app)
-			}
-		} else {
-			return Response{
-				Text:    "Привет!",
-				Buttons: services,
-			}
-		}
-	} else {
-		service, ok := app.ServiceMap[currentService]
+	currentService, ok := currentService(int(msg.Chat.ID), app)
+
+	if ok {
+		return currentService.next(msg.Text, app)
+	}
+
+	services := ownerServices(app)
+
+	if slices.Contains(services, msg.Text) {
+		service, ok := app.ServiceMap[msg.Text]
 		if ok {
-			return service.next(msg.Text, app)
+			return service.start(app.Owner.ID, app)
+		}
+		return Response{"Something went wrong", nil, 0}
+	} else {
+		return Response{
+			Text:    "Привет!",
+			Buttons: services,
 		}
 	}
-	return Response{}
 }
 
 func (a App) handle(msg *tgbotapi.Message) Response {
