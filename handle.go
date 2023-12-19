@@ -36,15 +36,12 @@ func responseToOwner(msg *tgbotapi.Message, app *App) Response {
 }
 
 func (a App) handle(msg *tgbotapi.Message) Response {
-	if int(msg.Chat.ID) == a.Owner.ChatID {
-		resp := responseToOwner(msg, &a)
-		resp.ChatID = msg.Chat.ID
-		return resp
-	}
+	chatID := int(msg.Chat.ID)
+
 	return Response{
 		Text:    "",
-		Buttons: nil,
-		ChatID:  msg.Chat.ID,
+		Buttons: a.Buttons,
+		ChatID:  0,
 	}
 }
 
