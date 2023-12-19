@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/go-co-op/gocron/v2"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/restream/reindexer/v3"
 	"strconv"
 )
@@ -9,6 +11,8 @@ type App struct {
 	Owner      User
 	DB         *reindexer.Reindexer
 	ServiceMap map[string]ServiceIface
+	Scheduler  gocron.Scheduler
+	Bot        *tgbotapi.BotAPI
 }
 
 func getApp() App {
@@ -34,7 +38,24 @@ func getApp() App {
 		"invite":       &Invite{},
 		"bitter_grass": &BitterGrass{},
 	}
-	return App{owner, db, serviceMap}
+
+	sch, err := gocron.NewScheduler()
+	handleError(err)
+	bg := BitterGrass{}
+	bot := getBot()
+	app := App{owner, db, serviceMap, sch, bot}
+	_, err = sch.NewJob(
+		gocron.DailyJob(
+			1,
+			gocron.NewAtTimes(
+				gocron.NewAtTime(17, 59, 00),
+			),
+		),
+		gocron.NewTask(bg.start, "me", &app),
+	)
+	handleError(err)
+	sch.Start()
+	return app
 }
 
 func ownerServices(app *App) []string {

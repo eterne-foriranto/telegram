@@ -39,7 +39,7 @@ func (si ServiceInstance) unlink(db *reindexer.Reindexer) {
 }
 
 type ServiceIface interface {
-	start(string, *reindexer.Reindexer) Response
+	start(string, *App) Response
 	next(string, *App) Response
 }
 
@@ -47,11 +47,11 @@ type Invite struct {
 	ServiceInstance
 }
 
-func (i *Invite) start(userID string, db *reindexer.Reindexer) Response {
+func (i *Invite) start(userID string, app *App) Response {
 	i.ServiceID = "invite"
 	i.State = "input user_id"
 	i.UserID = userID
-	i.assignUser(db)
+	i.assignUser(app.DB)
 	return Response{"Enter ID of the user to be invited", nil, 0}
 }
 
