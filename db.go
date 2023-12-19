@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/restream/reindexer/v3"
 	_ "github.com/restream/reindexer/v3/bindings/cproto"
+	"time"
 )
 
 type User struct {
@@ -17,11 +18,14 @@ type User struct {
 }
 
 type Job struct {
-	ID           int     `reindex:"id,,pk"`
-	ChatID       int     `reindex:"chat_id"`
-	Name         string  `reindex:"name"`
-	Times        []*Time `reindex:"at,,joined"`
-	EditedTimeID int     `reindex:"edited_time_id"`
+	ID           int           `reindex:"id,,pk"`
+	ChatID       int           `reindex:"chat_id"`
+	CronID       int           `reindex:"cron_id"`
+	Name         string        `reindex:"name"`
+	Times        []*Time       `reindex:"at,,joined"`
+	EditedTimeID int           `reindex:"edited_time_id"`
+	Period       time.Duration `reindex:"period"`
+	Count        int           `reindex:"count"`
 }
 
 type Time struct {
@@ -53,12 +57,21 @@ func (u *User) attachJob(name string, db *reindexer.Reindexer) {
 	job := &Job{
 		Name:   name,
 		ChatID: u.ChatID,
+		Count:  0,
 	}
 	defaultUpsert(db, "job", job)
 
 	db.Query("user").
 		WhereInt("chat_id", reindexer.EQ, u.ChatID).
 		Set("edited_job_id", job.ID).
+		Update()
+}
+
+func (u *User) setPeriod(hours int, db *reindexer.Reindexer) {
+	period := make(time.Duration)
+	db.Query("job").
+		WhereInt("id", reindexer.EQ, u.EditedJobID).
+		Set("period", hours).
 		Update()
 }
 
@@ -91,25 +104,71 @@ func (j *Job) setEditedTimeID(timeID int, db *reindexer.Reindexer) {
 		Update()
 }
 
-func (u *User) setHour(hour int, db *reindexer.Reindexer) {
-	job, ok := u.findEditedJob(db)
-	if ok {
-		if job.EditedTimeID == 0 {
-			time := &Time{
-				JobID: job.ID,
-				Hour:  hour,
-			}
-			defaultUpsert(db, "time", time)
-			job.setEditedTimeID(time.ID, db)
-		} else {
-			time, ok := findEditedTime(job.EditedTimeID, db)
-			if ok {
-				time
-			}
-		}
-	}
+type NotFound struct{}
+
+func (nf NotFound) Error() string {
+	return "not found"
 }
 
+func (t Time) value(field string) int {
+	values := map[string]int{
+		"hour":   t.Hour,
+		"minute": t.Minute,
+	}
+	return values[field]
+}
+
+func (u *User) setClockElem(time *Time, field string, db *reindexer.Reindexer) error {
+	job, ok := u.findEditedJob(db)
+	if !ok {
+		return NotFound{}
+	}
+
+	if job.EditedTimeID == 0 {
+		time.JobID = job.ID
+		defaultUpsert(db, "time", time)
+		job.setEditedTimeID(time.ID, db)
+	} else {
+		db.Query("time").
+			WhereInt("id", reindexer.EQ, job.EditedTimeID).
+			Set(field, time.value(field)).
+			Update()
+	}
+	return nil
+}
+
+func (u *User) setHour(hour int, db *reindexer.Reindexer) error {
+	return u.setClockElem(&Time{Hour: hour}, "hour", db)
+}
+
+func (u *User) setMinute(minute int, db *reindexer.Reindexer) error {
+	return u.setClockElem(&Time{Minute: minute}, "minute", db)
+}
+
+func clearEdited(ns, field string, ID int, db *reindexer.Reindexer) {
+	db.Query(ns).
+		WhereInt("id", reindexer.EQ, ID).
+		Set(field, 0).
+		Update()
+}
+
+func (u *User) clearEditedTime(db *reindexer.Reindexer) {
+	clearEdited("job", "edited_time_id", u.EditedJobID, db)
+}
+
+func (u *User) clearEdited(db *reindexer.Reindexer) {
+	db.Query("job").
+		WhereInt("id", reindexer.EQ, u.EditedJobID).
+		Set("edited_time_id", 0).
+		Update()
+}
+
+func setUserState(chatID int, state string, db *reindexer.Reindexer) {
+	db.Query("user").
+		WhereInt("chat_id", reindexer.EQ, chatID).
+		Set("state", state).
+		Update()
+}
 func (u *User) setState(state string, db *reindexer.Reindexer) {
 	db.Query("user").
 		WhereInt("chat_id", reindexer.EQ, u.ChatID).

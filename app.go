@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/go-co-op/gocron/v2"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/restream/reindexer/v3"
@@ -10,11 +11,17 @@ import (
 const (
 	StateWelcome = "welcome"
 	InpDrugName  = "inp drug name"
+	InpPeriod    = "inp period"
+	UnderRemind  = "under remind"
 	InpHour      = "inp hour"
+	InpMinute    = "inp minute"
+	ReadyToStart = "ready to start"
 )
 
 var reacts = map[string]string{
 	"add_drug": "Добавить лекарство",
+	"add_time": "Добавить ещё одно время",
+	"start":    "Запустить напоминание",
 }
 
 type App struct {
@@ -86,23 +93,35 @@ func user(chatID int, db *reindexer.Reindexer) *User {
 	return user
 }
 
-func validateHour(inp string) (Response, bool) {
-	resp := Response{}
+func (r *Response) processInt(inp string) (int, bool) {
 	ok := true
-	hour, err := strconv.Atoi(inp)
+	value, err := strconv.Atoi(inp)
 	if err != nil {
-		resp.Text = err.Error()
+		r.Text = err.Error()
 		ok = false
 	}
-
-	if hour < 0 || hour > 23 {
-		resp.Text = "Число должно быть в пределах 0 и 23"
-		ok = false
-	}
-	return resp, ok
+	return value, ok
 }
 
-func responce(inp string, chatID int, db *reindexer.Reindexer) Response {
+func (r *Response) processClockInp(inp string, min, max int) (int, bool) {
+	value, ok := r.processInt(inp)
+	if value < min || value > max {
+		r.Text = fmt.Sprintf("Число должно быть в пределах %v и %v", min, max)
+		ok = false
+	}
+	return value, ok
+}
+
+func (r *Response) processHour(inp string) (int, bool) {
+	return r.processClockInp(inp, 0, 23)
+}
+
+func (r *Response) processMinute(inp string) (int, bool) {
+	return r.processClockInp(inp, 0, 59)
+}
+
+func response(inp string, chatID int, app *App) Response {
+	db := app.DB
 	user := user(chatID, db)
 	res := Response{}
 	switch user.State {
@@ -115,12 +134,37 @@ func responce(inp string, chatID int, db *reindexer.Reindexer) Response {
 		}
 	case InpDrugName:
 		user.attachJob(inp, db)
-		user.setState(InpHour, db)
-		res.Text = "Введите час приёма"
-	case InpHour:
-		res, ok := validateHour(inp)
+		user.setState(InpPeriod, db)
+		res.Text = "Каждые сколько часов принимать?"
+	case InpPeriod:
+		hours, ok := res.processInt(inp)
 		if ok {
-
+			user.setPeriod(hours, db)
+			job, ok := user.findEditedJob(db)
+			if ok {
+				task := gocron.NewTask(job.remind, app)
+				cronJob := gocron.DurationJob(job.Period)
+				//cronJob := gocron.DurationJob(int(job.Period) * time.Hour)
+			}
+		}
+	case InpHour:
+		hour, ok := res.processHour(inp)
+		if ok {
+			err := user.setHour(hour, db)
+			if err != nil {
+				res.Text = "Cannot set hour"
+			}
+			user.setState(InpMinute, db)
+			res.Text = "Введите минуту приёма"
+		}
+	case InpMinute:
+		minute, ok := res.processMinute(inp)
+		if ok {
+			err := user.setMinute(minute, db)
+			if err != nil {
+				res.Text = "cannot set minute"
+			}
+			user.clearEditedTime(db)
 		}
 	}
 	res.ChatID = int64(chatID)
