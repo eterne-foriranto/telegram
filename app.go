@@ -9,13 +9,14 @@ import (
 )
 
 const (
-	StateWelcome = "welcome"
-	InpDrugName  = "inp drug name"
-	InpPeriod    = "inp period"
-	UnderRemind  = "under remind"
-	InpHour      = "inp hour"
-	InpMinute    = "inp minute"
-	ReadyToStart = "ready to start"
+	StateWelcome  = "welcome"
+	EnterDrugName = "Введите название лекарства"
+	InpDrugName   = "inp drug name"
+	InpPeriod     = "inp period"
+	UnderRemind   = "under remind"
+	InpHour       = "inp hour"
+	InpMinute     = "inp minute"
+	ReadyToStart  = "ready to start"
 )
 
 var reacts = map[string]string{
@@ -38,11 +39,10 @@ func getApp() App {
 	ownerChatID, err := strconv.Atoi(getConfigValue("telegram", "owner_chat_id"))
 	handleError(err)
 	owner := User{
-		ID:            "me",
-		ChatID:        ownerChatID,
-		IsActive:      true,
-		IsDeleted:     false,
-		InvitationKey: "",
+		ID:        "me",
+		ChatID:    ownerChatID,
+		IsActive:  true,
+		IsDeleted: false,
 	}
 
 	db := reindexer.NewReindex("cproto://172.19.0.7:6534/fk",
@@ -52,26 +52,10 @@ func getApp() App {
 	err = db.Upsert("user", owner)
 	handleError(err)
 
-	serviceMap := map[string]ServiceIface{
-		"invite":       &Invite{},
-		"bitter_grass": &BitterGrass{},
-	}
-
 	sch, err := gocron.NewScheduler()
 	handleError(err)
-	bg := BitterGrass{}
 	bot := getBot()
 	app := App{db, sch, bot, buttons}
-	_, err = sch.NewJob(
-		gocron.DailyJob(
-			1,
-			gocron.NewAtTimes(
-				gocron.NewAtTime(17, 59, 00),
-			),
-		),
-		gocron.NewTask(bg.start, "me", &app),
-	)
-	handleError(err)
 	sch.Start()
 	return app
 }
@@ -112,6 +96,10 @@ func (r *Response) processClockInp(inp string, min, max int) (int, bool) {
 	return value, ok
 }
 
+func (r *Response) processPeriod(inp string) (int, bool) {
+	return r.processClockInp(inp, 1, 23)
+}
+
 func (r *Response) processHour(inp string) (int, bool) {
 	return r.processClockInp(inp, 0, 23)
 }
@@ -129,7 +117,7 @@ func response(inp string, chatID int, app *App) Response {
 		res.Buttons = []string{reacts["add_drug"]}
 		if inp == reacts["add_drug"] {
 			user.setState(InpDrugName, db)
-			res.Text = "Введите название лекарства"
+			res.Text = EnterDrugName
 			res.Buttons = []string{}
 		}
 	case InpDrugName:
@@ -137,14 +125,18 @@ func response(inp string, chatID int, app *App) Response {
 		user.setState(InpPeriod, db)
 		res.Text = "Каждые сколько часов принимать?"
 	case InpPeriod:
-		hours, ok := res.processInt(inp)
+		hours, ok := res.processPeriod(inp)
 		if ok {
 			user.setPeriod(hours, db)
 			job, ok := user.findEditedJob(db)
 			if ok {
 				task := gocron.NewTask(job.remind, app)
 				cronJob := gocron.DurationJob(job.Period)
-				//cronJob := gocron.DurationJob(int(job.Period) * time.Hour)
+				_, err := app.Scheduler.NewJob(cronJob, task)
+				handleError(err)
+				res.Text = "Напоминание установлено"
+				res.Buttons = []string{reacts["add_drug"]}
+				user.setState(StateWelcome, db)
 			}
 		}
 	case InpHour:
@@ -169,12 +161,4 @@ func response(inp string, chatID int, app *App) Response {
 	}
 	res.ChatID = int64(chatID)
 	return res
-}
-
-func ownerServices(app *App) []string {
-	services := make([]string, 0)
-	for k := range app.ServiceMap {
-		services = append(services, k)
-	}
-	return services
 }

@@ -68,10 +68,9 @@ func (u *User) attachJob(name string, db *reindexer.Reindexer) {
 }
 
 func (u *User) setPeriod(hours int, db *reindexer.Reindexer) {
-	period := make(time.Duration)
 	db.Query("job").
 		WhereInt("id", reindexer.EQ, u.EditedJobID).
-		Set("period", hours).
+		Set("period", hours*int(time.Hour)).
 		Update()
 }
 
@@ -174,18 +173,6 @@ func (u *User) setState(state string, db *reindexer.Reindexer) {
 		WhereInt("chat_id", reindexer.EQ, u.ChatID).
 		Set("state", state).
 		Update()
-}
-
-func currentService(chatID int, db *reindexer.Reindexer) string {
-	query := db.Query("user").
-		WhereInt("chat_id", reindexer.EQ, chatID)
-	iterator := query.Exec()
-	defer iterator.Close()
-	for iterator.Next() {
-		elem := iterator.Object().(*User)
-		return elem.CurrentServiceID
-	}
-	return ""
 }
 
 type userNotFound struct{}
