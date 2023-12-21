@@ -25,7 +25,7 @@ func getBot() *tgbotapi.BotAPI {
 	token := getConfigValue("telegram", "token")
 	bot, err := tgbotapi.NewBotAPI(token)
 	handleError(err)
-	bot.Debug = false
+	bot.Debug = true
 	return bot
 }
 
