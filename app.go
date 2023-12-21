@@ -43,6 +43,7 @@ func getApp() App {
 		ChatID:    ownerChatID,
 		IsActive:  true,
 		IsDeleted: false,
+		State:     StateWelcome,
 	}
 
 	db := reindexer.NewReindex("cproto://172.19.0.7:6534/fk",
@@ -115,6 +116,7 @@ func response(inp string, chatID int, app *App) Response {
 	switch user.State {
 	case StateWelcome:
 		res.Buttons = []string{reacts["add_drug"]}
+		res.Text = "Готов к установке напоминаний"
 		if inp == reacts["add_drug"] {
 			user.setState(InpDrugName, db)
 			res.Text = EnterDrugName
