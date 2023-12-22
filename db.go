@@ -59,7 +59,10 @@ func (u *User) attachJob(name string, db *reindexer.Reindexer) {
 		ChatID: u.ChatID,
 		Count:  0,
 	}
-	defaultUpsert(db, "job", job)
+
+	err := db.OpenNamespace("job", reindexer.DefaultNamespaceOptions(), Job{})
+	_, err = db.Insert("job", job, "id=serial()")
+	handleError(err)
 
 	db.Query("user").
 		WhereInt("chat_id", reindexer.EQ, u.ChatID).
