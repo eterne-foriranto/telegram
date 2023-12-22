@@ -159,9 +159,9 @@ func (u *User) clearEditedTime(db *reindexer.Reindexer) {
 }
 
 func (u *User) clearEdited(db *reindexer.Reindexer) {
-	db.Query("job").
-		WhereInt("id", reindexer.EQ, u.EditedJobID).
-		Set("edited_time_id", 0).
+	db.Query("user").
+		WhereInt("chat_id", reindexer.EQ, u.ChatID).
+		Set("edited_job_id", 0).
 		Update()
 }
 
