@@ -46,7 +46,7 @@ func getApp() App {
 		State:     StateWelcome,
 	}
 
-	db := reindexer.NewReindex("cproto://172.19.0.7:6534/fk",
+	db := reindexer.NewReindex("cproto://172.20.0.2:6534/fk",
 		reindexer.WithCreateDBIfMissing())
 	err = db.OpenNamespace("user", reindexer.DefaultNamespaceOptions(), User{})
 	handleError(err)
@@ -136,6 +136,7 @@ func response(inp string, chatID int, app *App) Response {
 				cronJob := gocron.DurationJob(job.Period)
 				_, err := app.Scheduler.NewJob(cronJob, task)
 				handleError(err)
+				user.clearEdited(db)
 				res.Text = "Напоминание установлено"
 				res.Buttons = []string{reacts["add_drug"]}
 				user.setState(StateWelcome, db)
