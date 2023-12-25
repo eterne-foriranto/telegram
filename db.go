@@ -59,7 +59,10 @@ func (u *User) attachJob(name string, db *reindexer.Reindexer) {
 		ChatID: u.ChatID,
 		Count:  0,
 	}
-	defaultUpsert(db, "job", job)
+
+	err := db.OpenNamespace("job", reindexer.DefaultNamespaceOptions(), Job{})
+	_, err = db.Insert("job", job, "id=serial()")
+	handleError(err)
 
 	db.Query("user").
 		WhereInt("chat_id", reindexer.EQ, u.ChatID).
@@ -156,9 +159,9 @@ func (u *User) clearEditedTime(db *reindexer.Reindexer) {
 }
 
 func (u *User) clearEdited(db *reindexer.Reindexer) {
-	db.Query("job").
-		WhereInt("id", reindexer.EQ, u.EditedJobID).
-		Set("edited_time_id", 0).
+	db.Query("user").
+		WhereInt("chat_id", reindexer.EQ, u.ChatID).
+		Set("edited_job_id", 0).
 		Update()
 }
 
