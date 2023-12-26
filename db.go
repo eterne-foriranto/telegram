@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/google/uuid"
 	"github.com/restream/reindexer/v3"
 	_ "github.com/restream/reindexer/v3/bindings/cproto"
 	"time"
@@ -20,7 +21,7 @@ type User struct {
 type Job struct {
 	ID           int           `reindex:"id,,pk"`
 	ChatID       int           `reindex:"chat_id"`
-	CronID       int           `reindex:"cron_id"`
+	CronID       uuid.UUID     `reindex:"cron_id"`
 	Name         string        `reindex:"name"`
 	Times        []*Time       `reindex:"at,,joined"`
 	EditedTimeID int           `reindex:"edited_time_id"`
@@ -103,6 +104,13 @@ func (j *Job) setEditedTimeID(timeID int, db *reindexer.Reindexer) {
 	db.Query("job").
 		WhereInt("id", reindexer.EQ, j.ID).
 		Set("edited_time_id", timeID).
+		Update()
+}
+
+func (j *Job) setCronID(ID uuid.UUID, db *reindexer.Reindexer) {
+	db.Query("job").
+		WhereInt("id", reindexer.EQ, j.ID).
+		Set("cron_id", ID).
 		Update()
 }
 
