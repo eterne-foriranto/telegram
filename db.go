@@ -19,9 +19,9 @@ type User struct {
 }
 
 type Job struct {
-	ID           int           `reindex:"id,,pk"`
-	ChatID       int           `reindex:"chat_id"`
-	CronID       uuid.UUID     `reindex:"cron_id"`
+	ID     int `reindex:"id,,pk"`
+	ChatID int `reindex:"chat_id"`
+	//CronID       uuid.UUID     `reindex:"cron_id"`
 	Name         string        `reindex:"name"`
 	Times        []*Time       `reindex:"at,,joined"`
 	EditedTimeID int           `reindex:"edited_time_id"`
@@ -74,7 +74,7 @@ func (u *User) attachJob(name string, db *reindexer.Reindexer) {
 func (u *User) setPeriod(hours int, db *reindexer.Reindexer) {
 	db.Query("job").
 		WhereInt("id", reindexer.EQ, u.EditedJobID).
-		Set("period", hours*int(time.Hour)).
+		Set("period", hours*int(time.Minute)).
 		Update()
 }
 
@@ -112,6 +112,21 @@ func (j *Job) setCronID(ID uuid.UUID, db *reindexer.Reindexer) {
 		WhereInt("id", reindexer.EQ, j.ID).
 		Set("cron_id", ID).
 		Update()
+}
+
+func (j *Job) increaseCount(db *reindexer.Reindexer) {
+	elem, found := db.Query("job").
+		WhereInt("id", reindexer.EQ, j.ID).
+		Get()
+
+	if found {
+		cnt := elem.(*Job).Count
+		cnt++
+		db.Query("job").
+			WhereInt("id", reindexer.EQ, j.ID).
+			Set("count", cnt).
+			Update()
+	}
 }
 
 type NotFound struct{}
