@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/restream/reindexer/v3"
+	"github.com/restream/reindexer/v4"
 )
 
 type ServiceInstance struct {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/go-co-op/gocron/v2"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/restream/reindexer/v3"
+	"github.com/restream/reindexer/v4"
 	"strconv"
 )
 

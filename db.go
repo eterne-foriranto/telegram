@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/google/uuid"
-	"github.com/restream/reindexer/v3"
-	_ "github.com/restream/reindexer/v3/bindings/cproto"
+	"github.com/restream/reindexer/v4"
+	_ "github.com/restream/reindexer/v4/bindings/cproto"
 	"time"
 )
 
