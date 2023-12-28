@@ -74,7 +74,7 @@ func (u *User) attachJob(name string, db *reindexer.Reindexer) {
 func (u *User) setPeriod(hours int, db *reindexer.Reindexer) {
 	db.Query("job").
 		WhereInt("id", reindexer.EQ, u.EditedJobID).
-		Set("period", hours*int(time.Minute)).
+		Set("period", hours*int(time.Hour)).
 		Update()
 }
 
@@ -111,6 +111,13 @@ func (j *Job) setCronID(ID uuid.UUID, db *reindexer.Reindexer) {
 	db.Query("job").
 		WhereInt("id", reindexer.EQ, j.ID).
 		Set("cron_id", ID).
+		Update()
+}
+
+func (j *Job) setMicronID(ID uuid.UUID, db *reindexer.Reindexer) {
+	db.Query("job").
+		WhereInt("id", reindexer.EQ, j.ID).
+		Set("micron_id", ID).
 		Update()
 }
 
