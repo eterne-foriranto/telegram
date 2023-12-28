@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/go-co-op/gocron/v2"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/restream/reindexer/v3"
+	"github.com/restream/reindexer/v4"
 	"strconv"
 )
 
@@ -46,7 +46,7 @@ func getApp() App {
 		State:     StateWelcome,
 	}
 
-	db := reindexer.NewReindex("cproto://172.20.0.2:6534/fk",
+	db := reindexer.NewReindex("cproto://172.19.0.5:6534/fk",
 		reindexer.WithCreateDBIfMissing())
 	err = db.OpenNamespace("user", reindexer.DefaultNamespaceOptions(), User{})
 	handleError(err)
@@ -133,9 +133,10 @@ func response(inp string, chatID int, app *App) Response {
 			job, ok := user.findEditedJob(db)
 			if ok {
 				task := gocron.NewTask(job.remind, app)
-				cronJob := gocron.DurationJob(job.Period)
-				_, err := app.Scheduler.NewJob(cronJob, task)
+				jobDefinition := gocron.DurationJob(job.Period)
+				cronJob, err := app.Scheduler.NewJob(jobDefinition, task)
 				handleError(err)
+				job.setCronID(cronJob.ID(), db)
 				user.clearEdited(db)
 				res.Text = "Напоминание установлено"
 				res.Buttons = []string{reacts["add_drug"]}

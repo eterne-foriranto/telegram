@@ -17,4 +17,5 @@ func (j *Job) remind(app *App) {
 		ChatID:  int64(j.ChatID),
 	}
 	app.send(resp)
+	j.increaseCount(db)
 }
