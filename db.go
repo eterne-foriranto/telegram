@@ -15,7 +15,7 @@ type User struct {
 	InvitationKey string `reindex:"invitation_key"`
 	State         string `reindex:"state"`
 	Jobs          []*Job `reindex:"job,,joined"`
-	EditedJobID   int    `reindex:"edited_job_id"`
+	JobID         int    `reindex:"job_id"`
 }
 
 type Job struct {
@@ -54,6 +54,13 @@ func defaultUpsert(db *reindexer.Reindexer, ns string, item interface{}) {
 	handleError(err)
 }
 
+func setUserJobID(ChatID, JobID int, db *reindexer.Reindexer) {
+	db.Query("user").
+		WhereInt("chat_id", reindexer.EQ, ChatID).
+		Set("job_id", JobID).
+		Update()
+}
+
 func (u *User) attachJob(name string, db *reindexer.Reindexer) {
 	job := &Job{
 		Name:   name,
@@ -64,23 +71,26 @@ func (u *User) attachJob(name string, db *reindexer.Reindexer) {
 	err := db.OpenNamespace("job", reindexer.DefaultNamespaceOptions(), Job{})
 	_, err = db.Insert("job", job, "id=serial()")
 	handleError(err)
+	setUserJobID(u.ChatID, job.ID, db)
+}
 
-	db.Query("user").
-		WhereInt("chat_id", reindexer.EQ, u.ChatID).
-		Set("edited_job_id", job.ID).
-		Update()
+func (u *User) stopFrequentReminder(app *App) {
+	job, ok := u.findEditedJob(app.DB)
+	if ok {
+		app.Scheduler.RemoveJob(job.CronID)
+	}
 }
 
 func (u *User) setPeriod(hours int, db *reindexer.Reindexer) {
 	db.Query("job").
-		WhereInt("id", reindexer.EQ, u.EditedJobID).
+		WhereInt("id", reindexer.EQ, u.JobID).
 		Set("period", hours*int(time.Hour)).
 		Update()
 }
 
 func (u *User) findEditedJob(db *reindexer.Reindexer) (*Job, bool) {
 	iterator := db.Query("job").
-		WhereInt("id", reindexer.EQ, u.EditedJobID).
+		WhereInt("id", reindexer.EQ, u.JobID).
 		Exec()
 	job, err := iterator.FetchOne()
 	if err != nil {
@@ -185,7 +195,7 @@ func clearEdited(ns, field string, ID int, db *reindexer.Reindexer) {
 }
 
 func (u *User) clearEditedTime(db *reindexer.Reindexer) {
-	clearEdited("job", "edited_time_id", u.EditedJobID, db)
+	clearEdited("job", "edited_time_id", u.JobID, db)
 }
 
 func (u *User) clearEdited(db *reindexer.Reindexer) {

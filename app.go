@@ -21,9 +21,10 @@ const (
 )
 
 var reacts = map[string]string{
-	"add_drug": "Добавить лекарство",
-	"add_time": "Добавить ещё одно время",
-	"start":    "Запустить напоминание",
+	"add_drug":   "Добавить лекарство",
+	"add_time":   "Добавить ещё одно время",
+	"start":      "Запустить напоминание",
+	"have_taken": "Принял(а)",
 }
 
 type App struct {
@@ -142,6 +143,10 @@ func response(inp string, chatID int, app *App) Response {
 				res.Buttons = []string{reacts["add_drug"]}
 				user.setState(StateWelcome, db)
 			}
+		}
+	case UnderRemind:
+		if inp == reacts["have_taken"] {
+			user.setState(StateWelcome, db)
 		}
 	case InpHour:
 		hour, ok := res.processHour(inp)

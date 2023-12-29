@@ -14,7 +14,7 @@ func (j *Job) remind(app *App) {
 	db := app.DB
 	resp := Response{
 		Text:    text(j.Name),
-		Buttons: []string{"Принял(а)"},
+		Buttons: []string{reacts["have_taken"]},
 		ChatID:  int64(j.ChatID),
 	}
 	app.send(resp)
@@ -30,4 +30,5 @@ func (j *Job) startFrequentReminder(app *App) {
 	cronJob, err := app.Scheduler.NewJob(jobDef, task)
 	handleError(err)
 	j.setCronID(cronJob.ID(), db)
+	setUserJobID(j.ChatID, j.ID, db)
 }
