@@ -6,7 +6,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/restream/reindexer/v4"
 	"strconv"
-	"time"
 )
 
 const (
@@ -134,10 +133,7 @@ func response(inp string, chatID int, app *App) Response {
 			user.setPeriod(hours, db)
 			job, ok := user.findEditedJob(db)
 			if ok {
-				task := gocron.NewTask(job.startFrequentReminder, app)
-				jobDefinition := gocron.OneTimeJob(gocron.OneTimeJobStartDateTime(time.Now().Add(time.Duration(hours * int(time.Minute)))))
-				_, err := app.Scheduler.NewJob(jobDefinition, task)
-				handleError(err)
+				pushOneTimeJob(app, job)
 				user.clearEdited(db)
 				res.Text = "Напоминание установлено"
 				res.Buttons = []string{reacts["add_drug"]}
@@ -147,6 +143,10 @@ func response(inp string, chatID int, app *App) Response {
 	case UnderRemind:
 		if inp == reacts["have_taken"] {
 			user.setState(StateWelcome, db)
+			job, ok := user.findEditedJob(db)
+			if ok {
+				pushOneTimeJob(app, job)
+			}
 			user.stopFrequentReminder(app)
 		}
 	case InpHour:
