@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/restream/reindexer/v4"
 	_ "github.com/restream/reindexer/v4/bindings/cproto"
+	"strings"
 	"time"
 )
 
@@ -19,9 +20,9 @@ type User struct {
 }
 
 type Job struct {
-	ID     int `reindex:"id,,pk"`
-	ChatID int `reindex:"chat_id"`
-	//CronID       uuid.UUID     `reindex:"cron_id"`
+	ID           int           `reindex:"id,,pk"`
+	ChatID       int           `reindex:"chat_id"`
+	CronID       string        `reindex:"cron_id"`
 	Name         string        `reindex:"name"`
 	Times        []*Time       `reindex:"at,,joined"`
 	EditedTimeID int           `reindex:"edited_time_id"`
@@ -74,17 +75,17 @@ func (u *User) attachJob(name string, db *reindexer.Reindexer) {
 	setUserJobID(u.ChatID, job.ID, db)
 }
 
-func (u *User) stopFrequentReminder(app *App) {
-	job, ok := u.findEditedJob(app.DB)
-	if ok {
-		app.Scheduler.RemoveJob(job.CronID)
-	}
-}
+//func (u *User) stopFrequentReminder(app *App) {
+//	job, ok := u.findEditedJob(app.DB)
+//	if ok {
+//		app.Scheduler.RemoveJob(job.CronID)
+//	}
+//}
 
 func (u *User) setPeriod(hours int, db *reindexer.Reindexer) {
 	db.Query("job").
 		WhereInt("id", reindexer.EQ, u.JobID).
-		Set("period", hours*int(time.Hour)).
+		Set("period", hours*int(time.Minute)).
 		Update()
 }
 
@@ -103,11 +104,11 @@ func findEditedTime(id int, db *reindexer.Reindexer) (*Time, bool) {
 	iterator := db.Query("time").
 		WhereInt("id", reindexer.EQ, id).
 		Exec()
-	time, err := iterator.FetchOne()
+	editedTime, err := iterator.FetchOne()
 	if err != nil {
 		return nil, false
 	}
-	return time.(*Time), true
+	return editedTime.(*Time), true
 }
 
 func (j *Job) setEditedTimeID(timeID int, db *reindexer.Reindexer) {
@@ -117,10 +118,18 @@ func (j *Job) setEditedTimeID(timeID int, db *reindexer.Reindexer) {
 		Update()
 }
 
+func encodeCronID(ID uuid.UUID) string {
+	chars := make([]string, 16)
+	for i := 0; i < 16; i++ {
+		chars[i] = string(ID[i])
+	}
+	return strings.Join(chars, "")
+}
+
 func (j *Job) setCronID(ID uuid.UUID, db *reindexer.Reindexer) {
 	db.Query("job").
 		WhereInt("id", reindexer.EQ, j.ID).
-		Set("cron_id", ID).
+		Set("cron_id", encodeCronID(ID)).
 		Update()
 }
 
