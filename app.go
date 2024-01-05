@@ -48,7 +48,7 @@ func getApp() App {
 		State:     StateWelcome,
 	}
 
-	db := reindexer.NewReindex("cproto://172.19.0.5:6534/fk",
+	db := reindexer.NewReindex("cproto://172.19.0.2:6534/fk",
 		reindexer.WithCreateDBIfMissing())
 	err = db.OpenNamespace("user", reindexer.DefaultNamespaceOptions(), User{})
 	handleError(err)
@@ -147,6 +147,7 @@ func response(inp string, chatID int, app *App) Response {
 	case UnderRemind:
 		if inp == reacts["have_taken"] {
 			user.setState(StateWelcome, db)
+			user.stopFrequentReminder(app)
 		}
 	case InpHour:
 		hour, ok := res.processHour(inp)
