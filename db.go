@@ -75,17 +75,28 @@ func (u *User) attachJob(name string, db *reindexer.Reindexer) {
 	setUserJobID(u.ChatID, job.ID, db)
 }
 
-//func (u *User) stopFrequentReminder(app *App) {
-//	job, ok := u.findEditedJob(app.DB)
-//	if ok {
-//		app.Scheduler.RemoveJob(job.CronID)
-//	}
-//}
+func decodeCronID(ID string) uuid.UUID {
+	res := uuid.UUID{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	chars := []rune(ID)
+	for i := 0; i < 16; i++ {
+		res[i] = byte(chars[i])
+	}
+	return res
+}
+
+func (u *User) stopFrequentReminder(app *App) {
+	job, ok := u.findEditedJob(app.DB)
+	if ok {
+		err := app.Scheduler.RemoveJob(decodeCronID(job.CronID))
+		handleError(err)
+		setUserJobID(u.ChatID, job.ID, app.DB)
+	}
+}
 
 func (u *User) setPeriod(hours int, db *reindexer.Reindexer) {
 	db.Query("job").
 		WhereInt("id", reindexer.EQ, u.JobID).
-		Set("period", hours*int(time.Minute)).
+		Set("period", hours*int(time.Hour)).
 		Update()
 }
 
