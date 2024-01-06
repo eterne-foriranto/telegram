@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/restream/reindexer/v4"
 	_ "github.com/restream/reindexer/v4/bindings/cproto"
+	"strings"
 	"time"
 )
 
@@ -15,13 +16,13 @@ type User struct {
 	InvitationKey string `reindex:"invitation_key"`
 	State         string `reindex:"state"`
 	Jobs          []*Job `reindex:"job,,joined"`
-	EditedJobID   int    `reindex:"edited_job_id"`
+	JobID         int    `reindex:"job_id"`
 }
 
 type Job struct {
-	ID     int `reindex:"id,,pk"`
-	ChatID int `reindex:"chat_id"`
-	//CronID       uuid.UUID     `reindex:"cron_id"`
+	ID           int           `reindex:"id,,pk"`
+	ChatID       int           `reindex:"chat_id"`
+	CronID       string        `reindex:"cron_id"`
 	Name         string        `reindex:"name"`
 	Times        []*Time       `reindex:"at,,joined"`
 	EditedTimeID int           `reindex:"edited_time_id"`
@@ -54,6 +55,13 @@ func defaultUpsert(db *reindexer.Reindexer, ns string, item interface{}) {
 	handleError(err)
 }
 
+func setUserJobID(ChatID, JobID int, db *reindexer.Reindexer) {
+	db.Query("user").
+		WhereInt("chat_id", reindexer.EQ, ChatID).
+		Set("job_id", JobID).
+		Update()
+}
+
 func (u *User) attachJob(name string, db *reindexer.Reindexer) {
 	job := &Job{
 		Name:   name,
@@ -64,23 +72,37 @@ func (u *User) attachJob(name string, db *reindexer.Reindexer) {
 	err := db.OpenNamespace("job", reindexer.DefaultNamespaceOptions(), Job{})
 	_, err = db.Insert("job", job, "id=serial()")
 	handleError(err)
+	setUserJobID(u.ChatID, job.ID, db)
+}
 
-	db.Query("user").
-		WhereInt("chat_id", reindexer.EQ, u.ChatID).
-		Set("edited_job_id", job.ID).
-		Update()
+func decodeCronID(ID string) uuid.UUID {
+	res := uuid.UUID{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	chars := []rune(ID)
+	for i := 0; i < 16; i++ {
+		res[i] = byte(chars[i])
+	}
+	return res
+}
+
+func (u *User) stopFrequentReminder(app *App) {
+	job, ok := u.findEditedJob(app.DB)
+	if ok {
+		err := app.Scheduler.RemoveJob(decodeCronID(job.CronID))
+		handleError(err)
+		setUserJobID(u.ChatID, job.ID, app.DB)
+	}
 }
 
 func (u *User) setPeriod(hours int, db *reindexer.Reindexer) {
 	db.Query("job").
-		WhereInt("id", reindexer.EQ, u.EditedJobID).
-		Set("period", hours*int(time.Hour)).
+		WhereInt("id", reindexer.EQ, u.JobID).
+		Set("period", hours*int(time.Minute)).
 		Update()
 }
 
 func (u *User) findEditedJob(db *reindexer.Reindexer) (*Job, bool) {
 	iterator := db.Query("job").
-		WhereInt("id", reindexer.EQ, u.EditedJobID).
+		WhereInt("id", reindexer.EQ, u.JobID).
 		Exec()
 	job, err := iterator.FetchOne()
 	if err != nil {
@@ -93,11 +115,11 @@ func findEditedTime(id int, db *reindexer.Reindexer) (*Time, bool) {
 	iterator := db.Query("time").
 		WhereInt("id", reindexer.EQ, id).
 		Exec()
-	time, err := iterator.FetchOne()
+	editedTime, err := iterator.FetchOne()
 	if err != nil {
 		return nil, false
 	}
-	return time.(*Time), true
+	return editedTime.(*Time), true
 }
 
 func (j *Job) setEditedTimeID(timeID int, db *reindexer.Reindexer) {
@@ -107,10 +129,18 @@ func (j *Job) setEditedTimeID(timeID int, db *reindexer.Reindexer) {
 		Update()
 }
 
+func encodeCronID(ID uuid.UUID) string {
+	chars := make([]string, 16)
+	for i := 0; i < 16; i++ {
+		chars[i] = string(ID[i])
+	}
+	return strings.Join(chars, "")
+}
+
 func (j *Job) setCronID(ID uuid.UUID, db *reindexer.Reindexer) {
 	db.Query("job").
 		WhereInt("id", reindexer.EQ, j.ID).
-		Set("cron_id", ID).
+		Set("cron_id", encodeCronID(ID)).
 		Update()
 }
 
@@ -185,7 +215,7 @@ func clearEdited(ns, field string, ID int, db *reindexer.Reindexer) {
 }
 
 func (u *User) clearEditedTime(db *reindexer.Reindexer) {
-	clearEdited("job", "edited_time_id", u.EditedJobID, db)
+	clearEdited("job", "edited_time_id", u.JobID, db)
 }
 
 func (u *User) clearEdited(db *reindexer.Reindexer) {
