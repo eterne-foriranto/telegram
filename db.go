@@ -89,7 +89,7 @@ func (u *User) stopFrequentReminder(app *App) {
 	if ok {
 		err := app.Scheduler.RemoveJob(decodeCronID(job.CronID))
 		handleError(err)
-		setUserJobID(u.ChatID, job.ID, app.DB)
+		setUserJobID(u.ChatID, 0, app.DB)
 	}
 }
 
@@ -148,6 +148,13 @@ func (j *Job) setMicronID(ID uuid.UUID, db *reindexer.Reindexer) {
 	db.Query("job").
 		WhereInt("id", reindexer.EQ, j.ID).
 		Set("micron_id", ID).
+		Update()
+}
+
+func (j *Job) resetCount(db *reindexer.Reindexer) {
+	db.Query("job").
+		WhereInt("id", reindexer.EQ, j.ID).
+		Set("count", 0).
 		Update()
 }
 
