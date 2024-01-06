@@ -20,9 +20,10 @@ const (
 )
 
 var reacts = map[string]string{
-	"add_drug": "Добавить лекарство",
-	"add_time": "Добавить ещё одно время",
-	"start":    "Запустить напоминание",
+	"add_drug":   "Добавить лекарство",
+	"add_time":   "Добавить ещё одно время",
+	"start":      "Запустить напоминание",
+	"have_taken": "Принял(а)",
 }
 
 type App struct {
@@ -46,7 +47,7 @@ func getApp() App {
 		State:     StateWelcome,
 	}
 
-	db := reindexer.NewReindex("cproto://172.19.0.5:6534/fk",
+	db := reindexer.NewReindex("cproto://172.20.0.2:6534/fk",
 		reindexer.WithCreateDBIfMissing())
 	err = db.OpenNamespace("user", reindexer.DefaultNamespaceOptions(), User{})
 	handleError(err)
@@ -132,16 +133,22 @@ func response(inp string, chatID int, app *App) Response {
 			user.setPeriod(hours, db)
 			job, ok := user.findEditedJob(db)
 			if ok {
-				task := gocron.NewTask(job.remind, app)
-				jobDefinition := gocron.DurationJob(job.Period)
-				cronJob, err := app.Scheduler.NewJob(jobDefinition, task)
-				handleError(err)
-				job.setCronID(cronJob.ID(), db)
+				pushOneTimeJob(app, job)
 				user.clearEdited(db)
 				res.Text = "Напоминание установлено"
 				res.Buttons = []string{reacts["add_drug"]}
 				user.setState(StateWelcome, db)
 			}
+		}
+	case UnderRemind:
+		if inp == reacts["have_taken"] {
+			user.setState(StateWelcome, db)
+			job, ok := user.findEditedJob(db)
+			if ok {
+				pushOneTimeJob(app, job)
+				job.resetCount(db)
+			}
+			user.stopFrequentReminder(app)
 		}
 	case InpHour:
 		hour, ok := res.processHour(inp)
