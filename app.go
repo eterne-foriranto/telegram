@@ -47,7 +47,7 @@ func getApp() App {
 		State:     StateWelcome,
 	}
 
-	db := reindexer.NewReindex("cproto://172.19.0.2:6534/fk",
+	db := reindexer.NewReindex("cproto://172.20.0.2:6534/fk",
 		reindexer.WithCreateDBIfMissing())
 	err = db.OpenNamespace("user", reindexer.DefaultNamespaceOptions(), User{})
 	handleError(err)
@@ -146,6 +146,7 @@ func response(inp string, chatID int, app *App) Response {
 			job, ok := user.findEditedJob(db)
 			if ok {
 				pushOneTimeJob(app, job)
+				job.resetCount(db)
 			}
 			user.stopFrequentReminder(app)
 		}
