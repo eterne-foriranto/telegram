@@ -14,7 +14,7 @@ func handleError(err error) {
 }
 
 func getConfigValue(sectionName string, key string) string {
-	cnf, err := config.NewConfig("ini", "config.ini")
+	cnf, err := config.NewConfig("ini", "/config/config.ini")
 	handleError(err)
 	section, err := cnf.GetSection(sectionName)
 	handleError(err)
