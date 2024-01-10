@@ -47,7 +47,7 @@ func getApp() App {
 		State:     StateWelcome,
 	}
 
-	db := reindexer.NewReindex("cproto://reindexer:6534/fk",
+	db := reindexer.NewReindex("cproto://me:testpass@reindexer:6534/fk",
 		reindexer.WithCreateDBIfMissing())
 	err = db.OpenNamespace("user", reindexer.DefaultNamespaceOptions(), User{})
 	handleError(err)
