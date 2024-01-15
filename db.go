@@ -96,7 +96,7 @@ func (u *User) stopFrequentReminder(app *App) {
 func (u *User) setPeriod(hours int, db *reindexer.Reindexer) {
 	db.Query("job").
 		WhereInt("id", reindexer.EQ, u.JobID).
-		Set("period", hours*int(time.Minute)).
+		Set("period", hours*int(time.Hour)).
 		Update()
 }
 

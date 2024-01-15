@@ -26,7 +26,7 @@ func (j *Job) startFrequentReminder(app *App) {
 	setUserState(j.ChatID, UnderRemind, db)
 	j.remind(app)
 	task := gocron.NewTask(j.remind, app)
-	jobDef := gocron.DurationJob(10 * time.Second)
+	jobDef := gocron.DurationJob(10 * time.Minute)
 	cronJob, err := app.Scheduler.NewJob(jobDef, task)
 	handleError(err)
 	j.setCronID(cronJob.ID(), db)
