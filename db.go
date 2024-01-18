@@ -37,6 +37,19 @@ type Time struct {
 	Minute int `reindex:"minute"`
 }
 
+func allJobs(db *reindexer.Reindexer) []*Job {
+	jobs := make([]*Job, 0)
+	err := db.OpenNamespace("job", reindexer.DefaultNamespaceOptions(), Job{})
+	iterator := db.Query("job").
+		Exec()
+	items, err := iterator.FetchAll()
+	handleError(err)
+	for _, item := range items {
+		jobs = append(jobs, item.(*Job))
+	}
+	return jobs
+}
+
 func findUser(chatID int, db *reindexer.Reindexer) (*User, bool) {
 	iterator := db.Query("user").
 		WhereInt("chat_id", reindexer.EQ, chatID).

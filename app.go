@@ -58,6 +58,7 @@ func getApp() App {
 	handleError(err)
 	bot := getBot()
 	app := App{db, sch, bot, buttons}
+	restoreJobs(&app)
 	sch.Start()
 	return app
 }
