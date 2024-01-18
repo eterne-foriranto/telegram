@@ -11,3 +11,9 @@ func pushOneTimeJob(app *App, job *Job) {
 	_, err := app.Scheduler.NewJob(jobDefinition, task)
 	handleError(err)
 }
+
+func restoreJobs(app *App) {
+	for _, job := range allJobs(app.DB) {
+		pushOneTimeJob(app, job)
+	}
+}
