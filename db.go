@@ -28,6 +28,7 @@ type Job struct {
 	EditedTimeID int           `reindex:"edited_time_id"`
 	Period       time.Duration `reindex:"period"`
 	Count        int           `reindex:"count"`
+	IsActive     bool          `reindex:"is_active"`
 }
 
 type Time struct {
@@ -41,6 +42,7 @@ func allJobs(db *reindexer.Reindexer) []*Job {
 	jobs := make([]*Job, 0)
 	err := db.OpenNamespace("job", reindexer.DefaultNamespaceOptions(), Job{})
 	iterator := db.Query("job").
+		WhereBool("is_active", reindexer.EQ, true).
 		Exec()
 	items, err := iterator.FetchAll()
 	handleError(err)
@@ -77,9 +79,10 @@ func setUserJobID(ChatID, JobID int, db *reindexer.Reindexer) {
 
 func (u *User) attachJob(name string, db *reindexer.Reindexer) {
 	job := &Job{
-		Name:   name,
-		ChatID: u.ChatID,
-		Count:  0,
+		Name:     name,
+		ChatID:   u.ChatID,
+		Count:    0,
+		IsActive: true,
 	}
 
 	err := db.OpenNamespace("job", reindexer.DefaultNamespaceOptions(), Job{})
