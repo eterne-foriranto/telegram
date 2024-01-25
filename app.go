@@ -5,18 +5,21 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/restream/reindexer/v4"
+	"slices"
 	"strconv"
 )
 
 const (
-	StateWelcome  = "welcome"
-	EnterDrugName = "Введите название лекарства"
-	InpDrugName   = "inp drug name"
-	InpPeriod     = "inp period"
-	UnderRemind   = "under remind"
-	InpHour       = "inp hour"
-	InpMinute     = "inp minute"
-	ReadyToStart  = "ready to start"
+	StateWelcome     = "welcome"
+	EnterDrugName    = "Введите название лекарства"
+	InpDrugName      = "inp drug name"
+	InpPeriod        = "inp period"
+	UnderRemind      = "under remind"
+	InpHour          = "inp hour"
+	InpMinute        = "inp minute"
+	Cancel           = "cancel job"
+	InpJobToCancel   = "inp job to cancel"
+	EnterJobToCancel = "Какое напоминание отменить?"
 )
 
 var reacts = map[string]string{
@@ -24,19 +27,18 @@ var reacts = map[string]string{
 	"add_time":   "Добавить ещё одно время",
 	"start":      "Запустить напоминание",
 	"have_taken": "Принял(а)",
+	"cancel job": "Отменить напоминание",
 }
 
 type App struct {
 	DB        *reindexer.Reindexer
 	Scheduler gocron.Scheduler
 	Bot       *tgbotapi.BotAPI
-	Buttons   map[string][]string
+	Buttons   []string
 }
 
 func getApp() App {
-	buttons := map[string][]string{
-		StateWelcome: {"Добавить лекарство"},
-	}
+	buttons := []string{reacts["add_drug"], reacts["cancel job"]}
 	ownerChatID, err := strconv.Atoi(getConfigValue("telegram", "owner_chat_id"))
 	handleError(err)
 	owner := User{
@@ -80,6 +82,14 @@ func user(chatID int, db *reindexer.Reindexer) *User {
 	return user
 }
 
+func (u *User) activeJobNames(db *reindexer.Reindexer) []string {
+	names := make([]string, 0)
+	for _, job := range u.activeJobs(db) {
+		names = append(names, job.Name)
+	}
+	return names
+}
+
 func (r *Response) processInt(inp string) (int, bool) {
 	ok := true
 	value, err := strconv.Atoi(inp)
@@ -111,18 +121,38 @@ func (r *Response) processMinute(inp string) (int, bool) {
 	return r.processClockInp(inp, 0, 59)
 }
 
+func (r *Response) validateJobToCancel(inp string, user *User, db *reindexer.Reindexer) bool {
+	if slices.Contains(user.activeJobNames(db), inp) {
+		return true
+	}
+	r.Text = "Нужно выбрать одно из имеющихся напоминаний"
+	return false
+}
+
 func response(inp string, chatID int, app *App) Response {
 	db := app.DB
 	user := user(chatID, db)
 	res := Response{}
 	switch user.State {
 	case StateWelcome:
-		res.Buttons = []string{reacts["add_drug"]}
+		res.Buttons = app.Buttons
 		res.Text = "Готов к установке напоминаний"
-		if inp == reacts["add_drug"] {
+		switch inp {
+		case reacts["add_drug"]:
 			user.setState(InpDrugName, db)
 			res.Text = EnterDrugName
 			res.Buttons = []string{}
+		case reacts["cancel job"]:
+			user.setState(InpJobToCancel, db)
+			res.Text = EnterJobToCancel
+			res.Buttons = user.activeJobNames(db)
+		}
+	case InpJobToCancel:
+		if res.validateJobToCancel(inp, user, db) {
+			user.cancelJob(inp, app)
+			user.setState(StateWelcome, db)
+			res.Text = "Успешно отменено"
+			res.Buttons = app.Buttons
 		}
 	case InpDrugName:
 		user.attachJob(inp, db)
@@ -146,10 +176,12 @@ func response(inp string, chatID int, app *App) Response {
 			user.setState(StateWelcome, db)
 			job, ok := user.findEditedJob(db)
 			if ok {
+				user.stopFrequentReminder(app)
 				pushOneTimeJob(app, job)
 				job.resetCount(db)
 			}
-			user.stopFrequentReminder(app)
+			res.Text = "Хорошо"
+			res.Buttons = app.Buttons
 		}
 	case InpHour:
 		hour, ok := res.processHour(inp)
