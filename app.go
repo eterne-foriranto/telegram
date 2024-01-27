@@ -17,7 +17,7 @@ const (
 	UnderRemind      = "under remind"
 	InpHour          = "inp hour"
 	InpMinute        = "inp minute"
-	Cancel           = "cancel job"
+	Cancel           = "cancel_job"
 	InpJobToCancel   = "inp job to cancel"
 	EnterJobToCancel = "Какое напоминание отменить?"
 )
@@ -27,7 +27,7 @@ var reacts = map[string]string{
 	"add_time":   "Добавить ещё одно время",
 	"start":      "Запустить напоминание",
 	"have_taken": "Принял(а)",
-	"cancel job": "Отменить напоминание",
+	"cancel_job": "Отменить напоминание",
 }
 
 type App struct {
@@ -38,7 +38,7 @@ type App struct {
 }
 
 func getApp() App {
-	buttons := []string{reacts["add_drug"], reacts["cancel job"]}
+	buttons := []string{reacts["add_drug"]}
 	ownerChatID, err := strconv.Atoi(getConfigValue("telegram", "owner_chat_id"))
 	handleError(err)
 	owner := User{
@@ -136,13 +136,16 @@ func response(inp string, chatID int, app *App) Response {
 	switch user.State {
 	case StateWelcome:
 		res.Buttons = app.Buttons
+		if len(user.activeJobs(db)) != 0 {
+			res.Buttons = append(res.Buttons, reacts["cancel_job"])
+		}
 		res.Text = "Готов к установке напоминаний"
 		switch inp {
 		case reacts["add_drug"]:
 			user.setState(InpDrugName, db)
 			res.Text = EnterDrugName
 			res.Buttons = []string{}
-		case reacts["cancel job"]:
+		case reacts["cancel_job"]:
 			user.setState(InpJobToCancel, db)
 			res.Text = EnterJobToCancel
 			res.Buttons = user.activeJobNames(db)
