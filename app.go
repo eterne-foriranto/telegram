@@ -146,9 +146,14 @@ func response(inp string, chatID int, app *App) Response {
 			res.Text = EnterDrugName
 			res.Buttons = []string{}
 		case reacts["cancel_job"]:
-			user.setState(InpJobToCancel, db)
-			res.Text = EnterJobToCancel
-			res.Buttons = user.activeJobNames(db)
+			if len(user.activeJobs(db)) == 0 {
+				res.Text = "Напоминаний нет"
+				res.Buttons = app.Buttons
+			} else {
+				user.setState(InpJobToCancel, db)
+				res.Text = EnterJobToCancel
+				res.Buttons = user.activeJobNames(db)
+			}
 		}
 	case InpJobToCancel:
 		if res.validateJobToCancel(inp, user, db) {
