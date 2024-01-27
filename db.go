@@ -28,6 +28,7 @@ type Job struct {
 	EditedTimeID int           `reindex:"edited_time_id"`
 	Period       time.Duration `reindex:"period"`
 	Count        int           `reindex:"count"`
+	IsActive     bool          `reindex:"is_active"`
 }
 
 type Time struct {
@@ -41,6 +42,7 @@ func allJobs(db *reindexer.Reindexer) []*Job {
 	jobs := make([]*Job, 0)
 	err := db.OpenNamespace("job", reindexer.DefaultNamespaceOptions(), Job{})
 	iterator := db.Query("job").
+		WhereBool("is_active", reindexer.EQ, true).
 		Exec()
 	items, err := iterator.FetchAll()
 	handleError(err)
@@ -77,9 +79,10 @@ func setUserJobID(ChatID, JobID int, db *reindexer.Reindexer) {
 
 func (u *User) attachJob(name string, db *reindexer.Reindexer) {
 	job := &Job{
-		Name:   name,
-		ChatID: u.ChatID,
-		Count:  0,
+		Name:     name,
+		ChatID:   u.ChatID,
+		Count:    0,
+		IsActive: true,
 	}
 
 	err := db.OpenNamespace("job", reindexer.DefaultNamespaceOptions(), Job{})
@@ -104,6 +107,17 @@ func (u *User) stopFrequentReminder(app *App) {
 		handleError(err)
 		setUserJobID(u.ChatID, 0, app.DB)
 	}
+}
+
+func (u *User) activeJobByName(name string, db *reindexer.Reindexer) *Job {
+	iterator := db.Query("job").
+		WhereInt("chat_id", reindexer.EQ, u.ChatID).
+		WhereString("name", reindexer.EQ, name).
+		WhereBool("is_active", reindexer.EQ, true).
+		Exec()
+	item, err := iterator.FetchOne()
+	handleError(err)
+	return item.(*Job)
 }
 
 func (u *User) setPeriod(hours int, db *reindexer.Reindexer) {
@@ -161,6 +175,13 @@ func (j *Job) setMicronID(ID uuid.UUID, db *reindexer.Reindexer) {
 	db.Query("job").
 		WhereInt("id", reindexer.EQ, j.ID).
 		Set("micron_id", ID).
+		Update()
+}
+
+func (j *Job) setInactive(db *reindexer.Reindexer) {
+	db.Query("job").
+		WhereInt("id", reindexer.EQ, j.ID).
+		Set("is_active", false).
 		Update()
 }
 
@@ -256,6 +277,20 @@ func (u *User) setState(state string, db *reindexer.Reindexer) {
 		WhereInt("chat_id", reindexer.EQ, u.ChatID).
 		Set("state", state).
 		Update()
+}
+
+func (u *User) activeJobs(db *reindexer.Reindexer) []*Job {
+	iterator := db.Query("job").
+		WhereInt("chat_id", reindexer.EQ, u.ChatID).
+		WhereBool("is_active", reindexer.EQ, true).
+		Exec()
+	items, err := iterator.FetchAll()
+	handleError(err)
+	jobs := make([]*Job, 0)
+	for _, item := range items {
+		jobs = append(jobs, item.(*Job))
+	}
+	return jobs
 }
 
 type userNotFound struct{}
