@@ -102,6 +102,10 @@ func (r *Response) processInt(inp string) (int, bool) {
 
 func (r *Response) processClockInp(inp string, min, max int) (int, bool) {
 	value, ok := r.processInt(inp)
+	if !ok {
+		return value, false
+	}
+
 	if value < min || value > max {
 		r.Text = fmt.Sprintf("Число должно быть в пределах %v и %v", min, max)
 		ok = false
