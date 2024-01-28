@@ -7,6 +7,7 @@ import (
 	"github.com/restream/reindexer/v4"
 	"slices"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -100,8 +101,54 @@ func (r *Response) processInt(inp string) (int, bool) {
 	return value, ok
 }
 
+func validateInt(inp string) (bool, int, string) {
+	value, err := strconv.Atoi(inp)
+	ok := err == nil
+	return ok, value, fmt.Sprintf("%v", err)
+}
+
+type Validator struct {
+	Inp    string
+	Errors []string
+	OK     bool
+}
+
+func (v *Validator) checkOK(ok bool, err string) bool {
+	if !ok {
+		v.OK = false
+		v.Errors = append(v.Errors, err)
+		return false
+	}
+	return true
+}
+
+type Period struct {
+	Validator
+	Out int
+}
+
+func (p *Period) validate() {
+	ok, value, err := validateInt(p.Inp)
+	if p.checkOK(ok, err) {
+		p.Out = value
+	}
+
+	p.checkOK(validateMin(p.Out, 1))
+}
+
+func validateMin(value, min int) (bool, string) {
+	if value >= min {
+		return true, ""
+	}
+	return false, fmt.Sprintf("Число должно быть не меньше %v", min)
+}
+
 func (r *Response) processClockInp(inp string, min, max int) (int, bool) {
 	value, ok := r.processInt(inp)
+	if !ok {
+		return value, false
+	}
+
 	if value < min || value > max {
 		r.Text = fmt.Sprintf("Число должно быть в пределах %v и %v", min, max)
 		ok = false
@@ -167,9 +214,12 @@ func response(inp string, chatID int, app *App) Response {
 		user.setState(InpPeriod, db)
 		res.Text = "Каждые сколько часов принимать?"
 	case InpPeriod:
-		hours, ok := res.processPeriod(inp)
-		if ok {
-			user.setPeriod(hours, db)
+		period := &Period{}
+		period.OK = true
+		period.Inp = inp
+		period.validate()
+		if period.OK {
+			user.setPeriod(period.Out, db)
 			job, ok := user.findEditedJob(db)
 			if ok {
 				pushOneTimeJob(app, job)
@@ -178,6 +228,8 @@ func response(inp string, chatID int, app *App) Response {
 				res.Buttons = []string{reacts["add_drug"]}
 				user.setState(StateWelcome, db)
 			}
+		} else {
+			res.Text = strings.Join(period.Errors, ". ")
 		}
 	case UnderRemind:
 		if inp == reacts["have_taken"] {
