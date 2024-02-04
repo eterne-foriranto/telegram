@@ -12,7 +12,7 @@ func text(drugName string) string {
 
 func (j *Job) remind(app *App) {
 	db := app.DB
-	resp := Response{
+	resp := &Response{
 		Text:    text(j.Name),
 		Buttons: []string{reacts["have_taken"]},
 		ChatID:  int64(j.ChatID),
