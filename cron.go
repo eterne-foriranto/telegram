@@ -5,9 +5,13 @@ import (
 	"time"
 )
 
-func pushOneTimeJob(app *App, job *Job) {
+func pushOneTimeJob(app *App, job *Job, firstTime bool) {
 	task := gocron.NewTask(job.startFrequentReminder, app)
-	jobDefinition := gocron.OneTimeJob(gocron.OneTimeJobStartDateTime(time.Now().Add(job.Period)))
+	if !firstTime {
+		job.NextTime = job.NextTime.Add(job.Period)
+		defaultUpsert(app.DB, "job", job)
+	}
+	jobDefinition := gocron.OneTimeJob(gocron.OneTimeJobStartDateTime(job.NextTime))
 	cronJob, err := app.Scheduler.NewJob(jobDefinition, task)
 	job.setCronID(cronJob.ID(), app.DB)
 	handleError(err)
@@ -15,7 +19,9 @@ func pushOneTimeJob(app *App, job *Job) {
 
 func restoreJobs(app *App) {
 	for _, job := range allJobs(app.DB) {
-		pushOneTimeJob(app, job)
+		if job.NextTime.After(time.Now()) {
+			pushOneTimeJob(app, job, true)
+		}
 	}
 }
 

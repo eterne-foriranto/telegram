@@ -8,19 +8,25 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
-	StateWelcome     = "welcome"
-	EnterDrugName    = "Введите название лекарства"
-	InpDrugName      = "inp drug name"
-	InpPeriod        = "inp period"
-	UnderRemind      = "under remind"
-	InpHour          = "inp hour"
-	InpMinute        = "inp minute"
-	Cancel           = "cancel_job"
-	InpJobToCancel   = "inp job to cancel"
-	EnterJobToCancel = "Какое напоминание отменить?"
+	StateWelcome        = "welcome"
+	EnterDrugName       = "Введите название лекарства"
+	InpDrugName         = "inp drug name"
+	InpPeriod           = "inp period"
+	UnderRemind         = "under remind"
+	InpHour             = "inp hour"
+	InpMinute           = "inp minute"
+	Cancel              = "cancel_job"
+	InpJobToCancel      = "inp job to cancel"
+	EnterJobToCancel    = "Какое напоминание отменить?"
+	InpFirstStartYear   = "inp first start year"
+	InpFirstStartMonth  = "inp first start month"
+	InpFirstStartDay    = "inp first start day"
+	InpFirstStartHour   = "inp first start hour"
+	InpFirstStartMinute = "inp first start minute"
 )
 
 var reacts = map[string]string{
@@ -36,6 +42,11 @@ type App struct {
 	Scheduler gocron.Scheduler
 	Bot       *tgbotapi.BotAPI
 	Buttons   []string
+}
+
+func months() []string {
+	return []string{"Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь",
+		"Октябрь", "Ноябрь", "Декабрь"}
 }
 
 func getApp() App {
@@ -176,10 +187,10 @@ func (r *Response) validateJobToCancel(inp string, user *User, db *reindexer.Rei
 	return false
 }
 
-func response(inp string, chatID int, app *App) Response {
+func response(inp string, chatID int, app *App) *Response {
 	db := app.DB
 	user := user(chatID, db)
-	res := Response{}
+	res := &Response{}
 	switch user.State {
 	case StateWelcome:
 		res.Buttons = app.Buttons
@@ -211,8 +222,20 @@ func response(inp string, chatID int, app *App) Response {
 		}
 	case InpDrugName:
 		user.attachJob(inp, db)
-		user.setState(InpPeriod, db)
-		res.Text = "Каждые сколько часов принимать?"
+		user.setState(InpFirstStartYear, db)
+		res.Text = "Введите год первого приёма"
+		year := strconv.Itoa(time.Now().Year())
+		res.Buttons = []string{year}
+	case InpFirstStartYear:
+		res.handleFirstYear(inp, user, db)
+	case InpFirstStartMonth:
+		res.handleFirstMonth(inp, user, db)
+	case InpFirstStartDay:
+		res.handleFirstDay(inp, user, db)
+	case InpFirstStartHour:
+		res.handleFirstHour(inp, user, db)
+	case InpFirstStartMinute:
+		res.handleFirstMinute(inp, user, db)
 	case InpPeriod:
 		period := &Period{}
 		period.OK = true
@@ -222,7 +245,7 @@ func response(inp string, chatID int, app *App) Response {
 			user.setPeriod(period.Out, db)
 			job, ok := user.findEditedJob(db)
 			if ok {
-				pushOneTimeJob(app, job)
+				pushOneTimeJob(app, job, true)
 				user.clearEdited(db)
 				res.Text = "Напоминание установлено"
 				res.Buttons = []string{reacts["add_drug"]}
@@ -237,7 +260,7 @@ func response(inp string, chatID int, app *App) Response {
 			job, ok := user.findEditedJob(db)
 			if ok {
 				user.stopFrequentReminder(app)
-				pushOneTimeJob(app, job)
+				pushOneTimeJob(app, job, false)
 				job.resetCount(db)
 			}
 			res.Text = "Хорошо"

@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/restream/reindexer/v4"
 	_ "github.com/restream/reindexer/v4/bindings/cproto"
+	"slices"
 	"strings"
 	"time"
 )
@@ -29,6 +30,7 @@ type Job struct {
 	Period       time.Duration `reindex:"period"`
 	Count        int           `reindex:"count"`
 	IsActive     bool          `reindex:"is_active"`
+	NextTime     time.Time     `reindex:"next_time"`
 }
 
 type Time struct {
@@ -94,7 +96,7 @@ func (u *User) attachJob(name string, db *reindexer.Reindexer) {
 func decodeCronID(ID string) uuid.UUID {
 	res := uuid.UUID{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	chars := []rune(ID)
-	for i := 0; i < 16; i++ {
+	for i := 0; i < min(16, len(ID)); i++ {
 		res[i] = byte(chars[i])
 	}
 	return res
@@ -204,6 +206,47 @@ func (j *Job) increaseCount(db *reindexer.Reindexer) {
 			WhereInt("id", reindexer.EQ, j.ID).
 			Set("count", cnt).
 			Update()
+	}
+}
+
+func (j *Job) setNextYear(year int, db *reindexer.Reindexer) {
+	alreadyYear := j.NextTime.Year()
+	if alreadyYear != year {
+		j.NextTime = j.NextTime.AddDate(year-alreadyYear, 0, 0)
+		defaultUpsert(db, "job", j)
+	}
+}
+
+func (j *Job) setNextMonth(month string, db *reindexer.Reindexer) {
+	alreadyMonth := int(j.NextTime.Month())
+	newMonth := slices.Index(months(), month) + 1
+	if alreadyMonth != newMonth {
+		j.NextTime = j.NextTime.AddDate(0, newMonth-alreadyMonth, 0)
+		defaultUpsert(db, "job", j)
+	}
+}
+
+func (j *Job) setNextDay(day int, db *reindexer.Reindexer) {
+	alreadyDay := j.NextTime.Day()
+	if alreadyDay != day {
+		j.NextTime = j.NextTime.AddDate(0, 0, day-alreadyDay)
+		defaultUpsert(db, "job", j)
+	}
+}
+
+func (j *Job) setNextHour(hour int, db *reindexer.Reindexer) {
+	alreadyHour := j.NextTime.Hour()
+	if alreadyHour != hour {
+		j.NextTime = j.NextTime.Add(time.Duration((hour - alreadyHour) * int(time.Hour)))
+		defaultUpsert(db, "job", j)
+	}
+}
+
+func (j *Job) setNextMinute(minute int, db *reindexer.Reindexer) {
+	alreadyMinute := j.NextTime.Minute()
+	if alreadyMinute != minute {
+		j.NextTime = j.NextTime.Add(time.Duration((minute - alreadyMinute) * int(time.Minute)))
+		defaultUpsert(db, "job", j)
 	}
 }
 
