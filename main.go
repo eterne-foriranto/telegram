@@ -34,7 +34,7 @@ func shutDown(s gocron.Scheduler) {
 	handleError(err)
 }
 
-func (a App) send(r Response) {
+func (a App) send(r *Response) {
 	msg := makeMessage(r)
 	_, err := a.Bot.Send(msg)
 	handleError(err)
