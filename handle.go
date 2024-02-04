@@ -10,12 +10,12 @@ type Response struct {
 	ChatID  int64
 }
 
-func (a App) handle(msg *tgbotapi.Message) Response {
+func (a App) handle(msg *tgbotapi.Message) *Response {
 	chatID := int(msg.Chat.ID)
 	return response(msg.Text, chatID, &a)
 }
 
-func makeMessage(resp Response) tgbotapi.MessageConfig {
+func makeMessage(resp *Response) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(resp.ChatID, resp.Text)
 	buttons := make([]tgbotapi.KeyboardButton, 0)
 	for _, v := range resp.Buttons {
