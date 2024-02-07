@@ -8,7 +8,7 @@ import (
 func pushOneTimeJob(app *App, job *Job, firstTime bool) {
 	task := gocron.NewTask(job.startFrequentReminder, app)
 	if !firstTime {
-		job.NextTime = job.NextTime.Add(job.Period)
+		job.NextTime = time.Now().Add(job.Period)
 		defaultUpsert(app.DB, "job", job)
 	}
 	jobDefinition := gocron.OneTimeJob(gocron.OneTimeJobStartDateTime(job.NextTime))
