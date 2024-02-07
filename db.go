@@ -212,7 +212,7 @@ func (j *Job) increaseCount(db *reindexer.Reindexer) {
 func (j *Job) setNextYear(year int, db *reindexer.Reindexer) {
 	alreadyYear := j.NextTime.Year()
 	if alreadyYear != year {
-		j.NextTime = j.NextTime.AddDate(year-alreadyYear, 0, 0)
+		j.NextTime = j.NextTime.AddDate(year-alreadyYear, 0, 0).Local()
 		defaultUpsert(db, "job", j)
 	}
 }
