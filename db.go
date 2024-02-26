@@ -353,3 +353,11 @@ func chatIDByUserID(userID string, db *reindexer.Reindexer) (int64, error) {
 	}
 	return 0, userNotFound{}
 }
+
+func userState(ChatID int, db *reindexer.Reindexer) (string, bool) {
+	user, ok := findUser(ChatID, db)
+	if ok {
+		return user.State, true
+	}
+	return "", false
+}
