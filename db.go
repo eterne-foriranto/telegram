@@ -316,6 +316,7 @@ func setUserState(chatID int, state string, db *reindexer.Reindexer) {
 		Update()
 }
 func (u *User) setState(state string, db *reindexer.Reindexer) {
+	u.State = state
 	db.Query("user").
 		WhereInt("chat_id", reindexer.EQ, u.ChatID).
 		Set("state", state).
@@ -352,4 +353,12 @@ func chatIDByUserID(userID string, db *reindexer.Reindexer) (int64, error) {
 		return int64(elem.ChatID), nil
 	}
 	return 0, userNotFound{}
+}
+
+func userState(chatID int, db *reindexer.Reindexer) (string, bool) {
+	user, ok := findUser(chatID, db)
+	if ok {
+		return user.State, true
+	}
+	return "", false
 }
