@@ -27,6 +27,7 @@ const (
 	InpFirstStartDay    = "inp first start day"
 	InpFirstStartHour   = "inp first start hour"
 	InpFirstStartMinute = "inp first start minute"
+	Home                = "Домой"
 )
 
 var reacts = map[string]string{
@@ -190,6 +191,9 @@ func (r *Response) validateJobToCancel(inp string, user *User, db *reindexer.Rei
 func response(inp string, chatID int, app *App) *Response {
 	db := app.DB
 	user := user(chatID, db)
+	if inp == Home {
+		user.setState(StateWelcome, db)
+	}
 	res := &Response{}
 	switch user.State {
 	case StateWelcome:
@@ -285,6 +289,10 @@ func response(inp string, chatID int, app *App) *Response {
 			}
 			user.clearEditedTime(db)
 		}
+	}
+	state, ok := userState(chatID, db)
+	if ok && state != StateWelcome {
+		res.Buttons = append(res.Buttons, Home)
 	}
 	res.ChatID = int64(chatID)
 	return res
