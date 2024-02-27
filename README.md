@@ -1,1 +1,1 @@
-A Telegram bot which reminds user to take drugs
+A [Telegram bot](https://t.me/dr_strangelove_2_bot) which reminds user to take drugs
