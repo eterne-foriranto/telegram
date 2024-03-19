@@ -185,6 +185,31 @@ func (m *Minute) validate() {
 	m.checkOK(validateMax(m.Out, 60))
 }
 
+type Mode struct {
+	Validator
+	Out string
+}
+
+func makeMode(inp string) *Mode {
+	mode := &Mode{}
+	mode.Inp = inp
+	mode.OK = true
+	mode.Out = inp
+	return mode
+}
+
+func validateModes(inp string) (bool, string) {
+	if slices.Contains(modes, m.Inp) {
+		return true, ""
+	} else {
+		return false, fmt.Sprintf("Режим %v не распознан", inp)
+	}
+}
+
+func (m *Mode) validate() {
+	m.checkOK(validateModes(m.Inp))
+}
+
 func (r *Response) handleFirstMinute(inp string, user *User,
 	db *reindexer.Reindexer) {
 	minute := makeMinute(inp)
@@ -204,5 +229,23 @@ func (r *Response) handleFirstMinute(inp string, user *User,
 		}
 	} else {
 		r.Text = strings.Join(minute.Errors, ". ")
+	}
+}
+
+func (r *Response) handleInpDrugName(user *User, inp string, db *DB) {
+	user.attachJob(inp, db)
+	user.setState(InpFirstStartYear, db)
+	r.Text = "Введите год первого приёма"
+	year := strconv.Itoa(time.Now().Year())
+	r.Buttons = []string{year}
+}
+
+func (r *Response) handleInpMode(inp string) {
+	mode := makeMode(inp)
+	mode.validate()
+	if mode.OK {
+		switch mode.Out {
+		case
+		}
 	}
 }

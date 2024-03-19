@@ -28,6 +28,7 @@ const (
 	InpFirstStartHour   = "inp first start hour"
 	InpFirstStartMinute = "inp first start minute"
 	Home                = "Домой"
+	InpMode             = "inp mode"
 )
 
 var reacts = map[string]string{
@@ -36,7 +37,11 @@ var reacts = map[string]string{
 	"start":      "Запустить напоминание",
 	"have_taken": "Принял(а)",
 	"cancel_job": "Отменить напоминание",
+	"period":     "Каждые n часов",
+	"at_times":   "В фиксированное время",
 }
+
+var modes = []string{reacts["period"], reacts["at_times"]}
 
 type App struct {
 	DB        *reindexer.Reindexer
